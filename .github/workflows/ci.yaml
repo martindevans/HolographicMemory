@@ -18,18 +18,15 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 10.x.x
 
-    - name: Setup NuGet
-      uses: NuGet/setup-nuget@v2.0.1
-
     - name: Restore dependencies
-      run: nuget restore $SOLUTION
+      run: dotnet restore $SOLUTION
 
     - name: Build
       run: dotnet build $SOLUTION --configuration $BUILD_CONFIG --no-restore
