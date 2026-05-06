@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using FftFlat;
 using static System.Numerics.Tensors.TensorPrimitives;
 using static HolographicMemory.HRR;
 
@@ -28,6 +29,8 @@ public class HolographicMemory<TNumber>
         }
     }
 
+    private FastFourierTransform _fft;
+
     public HolographicMemory(int dimensions, int seed)
     {
         Dimensions = dimensions;
@@ -36,6 +39,8 @@ public class HolographicMemory<TNumber>
         _memoryVector = new TNumber[Dimensions];
         _normalizedMemory = new TNumber[Dimensions];
         _requiresNormalization = true;
+
+        _fft = new FastFourierTransform(Dimensions);
     }
 
     #region Create
@@ -139,10 +144,10 @@ public class HolographicMemory<TNumber>
     public void Store(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryObject<TNumber> obj)
     {
         using var bc = Borrow<TNumber>.Get(Dimensions);
-        Bind(predicate.Vector.Span, obj.Vector.Span, bc);
+        Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
 
         using var abc = Borrow<TNumber>.Get(Dimensions);
-        Bind(subject.Vector.Span, bc, abc);
+        Bind(_fft, subject.Vector.Span, bc, abc);
 
         Store(abc);
     }
@@ -150,7 +155,7 @@ public class HolographicMemory<TNumber>
     public void Store(MemorySubject<TNumber> subject, MemoryProperty<TNumber> property)
     {
         using var ab = Borrow<TNumber>.Get(Dimensions);
-        Bind(subject.Vector.Span, property.Vector.Span, ab);
+        Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
         
         Store(ab);
     }
@@ -168,10 +173,10 @@ public class HolographicMemory<TNumber>
     public void Remove(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryObject<TNumber> obj)
     {
         using var bc = Borrow<TNumber>.Get(Dimensions);
-        Bind(predicate.Vector.Span, obj.Vector.Span, bc);
+        Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
 
         using var abc = Borrow<TNumber>.Get(Dimensions);
-        Bind(subject.Vector.Span, bc, abc);
+        Bind(_fft, subject.Vector.Span, bc, abc);
         
         Remove(abc);
     }
@@ -179,7 +184,7 @@ public class HolographicMemory<TNumber>
     public void Remove(MemorySubject<TNumber> subject, MemoryProperty<TNumber> property)
     {
         using var ab = Borrow<TNumber>.Get(Dimensions);
-        Bind(subject.Vector.Span, property.Vector.Span, ab);
+        Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
 
         Remove(ab);
     }
@@ -205,18 +210,18 @@ public class HolographicMemory<TNumber>
     {
         // Calculate query vector
         using var key = Borrow<TNumber>.Get(Dimensions);
-        Bind(predicate.Vector.Span, obj.Vector.Span, key);
+        Bind(_fft, predicate.Vector.Span, obj.Vector.Span, key);
 
         // Unbind from memory
-        Unbind(NormalizedMemoryVector, key, output);
+        Unbind(_fft, NormalizedMemoryVector, key, output);
     }
 
     public void Query(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, Span<TNumber> output)
     {
         using var x = Borrow<TNumber>.Get(Dimensions);
-        Unbind(NormalizedMemoryVector, subject.Vector.Span, x);
+        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
 
-        Unbind(x, predicate.Vector.Span, output);
+        Unbind(_fft, x, predicate.Vector.Span, output);
     }
     #endregion
 }
