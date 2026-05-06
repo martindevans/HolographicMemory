@@ -11,4 +11,8 @@
     <PackageReference Include="System.Numerics.Tensors" Version="10.0.7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="HolographicMemory.Tests" />
+  </ItemGroup>
+
 </Project>
