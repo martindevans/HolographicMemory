@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HolographicMemory.Demo/HolographicMemory.Demo.csproj" />
+  <Project Path="HolographicMemory/HolographicMemory.csproj" />
+</Solution>
