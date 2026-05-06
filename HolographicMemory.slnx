@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="HolographicMemory.Demo/HolographicMemory.Demo.csproj" />
+  <Project Path="HolographicMemory.Tests/HolographicMemory.Tests.csproj" Id="97ce99ce-cf20-4093-8b15-bff2338a5009" />
   <Project Path="HolographicMemory/HolographicMemory.csproj" />
 </Solution>
