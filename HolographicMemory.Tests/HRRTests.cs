@@ -45,14 +45,14 @@ public sealed class HRRTests
     [TestMethod]
     public void Normalize_ProducesUnitVector()
     {
-        var v = new float[] { 3f, 0f, 4f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
-                              0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f };
+        var v = new[] { 3f, 0f, 4f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f,
+                        0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f };
         HRR.Normalize(v, v);
         Assert.AreEqual(1.0, L2Norm(v), ToleranceLoose);
     }

@@ -7,13 +7,12 @@ namespace HolographicMemory.Tests
     {
         // Use a moderate dimension that is large enough for reliable similarity
         // scores but small enough for fast tests.
-        private const int Dims = 512;
+        private const int Dims = 1024;
         private const int Seed = 42;
 
         // Similarity threshold: stored facts should score above this, unrelated
         // facts should score below it.
-        private const float HighSimilarity = 0.05f;
-        private const float LowSimilarity = -0.05f;
+        private const float HighSimilarity = 0.25f;
 
         // ---------------------------------------------------------------------------
         // Vector generation
@@ -97,11 +96,11 @@ namespace HolographicMemory.Tests
             var result = new float[Dims];
             memory.Query(likes, anime, result);
 
-            float aliceSim = Dot(result, alice.Vector.Span);
-            float martinSim = Dot(result, martin.Vector.Span);
+            var aliceSim = Dot(result, alice.Vector.Span);
+            var martinSim = Dot(result, martin.Vector.Span);
 
-            Assert.IsTrue(aliceSim > HighSimilarity, $"Alice similarity {aliceSim} should be high");
-            Assert.IsTrue(aliceSim > martinSim, $"Alice similarity {aliceSim} should exceed Martin's {martinSim}");
+            Assert.IsGreaterThan(HighSimilarity, aliceSim, $"Alice similarity {aliceSim} should be high");
+            Assert.IsGreaterThan(martinSim, aliceSim, $"Alice similarity {aliceSim} should exceed Martin's {martinSim}");
         }
 
         [TestMethod]
@@ -119,11 +118,11 @@ namespace HolographicMemory.Tests
             var result = new float[Dims];
             memory.Query(alice, likes, result);
 
-            float operaSim = Dot(result, opera.Vector.Span);
-            float pizzaSim = Dot(result, pizza.Vector.Span);
+            var operaSim = Dot(result, opera.Vector.Span);
+            var pizzaSim = Dot(result, pizza.Vector.Span);
 
-            Assert.IsTrue(operaSim > HighSimilarity, $"Opera similarity {operaSim} should be high");
-            Assert.IsTrue(operaSim > pizzaSim, $"Opera similarity {operaSim} should exceed Pizza's {pizzaSim}");
+            Assert.IsGreaterThan(HighSimilarity, operaSim, $"Opera similarity {operaSim} should be high");
+            Assert.IsGreaterThan(pizzaSim, operaSim, $"Opera similarity {operaSim} should exceed Pizza's {pizzaSim}");
         }
 
         [TestMethod]
@@ -144,15 +143,15 @@ namespace HolographicMemory.Tests
 
             // Query: who likes anime? → Martin
             memory.Query(likes, anime, result);
-            float martinSim = Dot(result, martin.Vector.Span);
-            float aliceSim = Dot(result, alice.Vector.Span);
-            Assert.IsTrue(martinSim > aliceSim, $"Martin ({martinSim}) should score higher than Alice ({aliceSim}) for Anime");
+            var martinSim = Dot(result, martin.Vector.Span);
+            var aliceSim = Dot(result, alice.Vector.Span);
+            Assert.IsGreaterThan(aliceSim, martinSim, $"Martin ({martinSim}) should score higher than Alice ({aliceSim}) for Anime");
 
             // Query: who likes opera? → Alice
             memory.Query(likes, opera, result);
             martinSim = Dot(result, martin.Vector.Span);
             aliceSim = Dot(result, alice.Vector.Span);
-            Assert.IsTrue(aliceSim > martinSim, $"Alice ({aliceSim}) should score higher than Martin ({martinSim}) for Opera");
+            Assert.IsGreaterThan(martinSim, aliceSim, $"Alice ({aliceSim}) should score higher than Martin ({martinSim}) for Opera");
         }
 
         // ---------------------------------------------------------------------------
@@ -171,7 +170,7 @@ namespace HolographicMemory.Tests
             memory.Store(alice, female);
             var normAfter = Norm(memory.MemoryVector);
 
-            Assert.IsTrue(normAfter > normBefore, $"Memory norm should increase after storing a property: before={normBefore}, after={normAfter}");
+            Assert.IsGreaterThan(normBefore, normAfter, $"Memory norm should increase after storing a property: before={normBefore}, after={normAfter}");
         }
 
         // ---------------------------------------------------------------------------
@@ -195,15 +194,15 @@ namespace HolographicMemory.Tests
 
             var resultBefore = new float[Dims];
             memory.Query(likes, opera, resultBefore);
-            float simBefore = Dot(resultBefore, alice.Vector.Span);
+            var simBefore = Dot(resultBefore, alice.Vector.Span);
 
             memory.Remove(alice, likes, opera);
 
             var resultAfter = new float[Dims];
             memory.Query(likes, opera, resultAfter);
-            float simAfter = Dot(resultAfter, alice.Vector.Span);
+            var simAfter = Dot(resultAfter, alice.Vector.Span);
 
-            Assert.IsTrue(simAfter < simBefore, $"Similarity after remove ({simAfter}) should be less than before ({simBefore})");
+            Assert.IsLessThan(simBefore, simAfter, $"Similarity after remove ({simAfter}) should be less than before ({simBefore})");
         }
 
         [TestMethod]
@@ -220,7 +219,7 @@ namespace HolographicMemory.Tests
             memory.Remove(alice, female);
             var afterNorm = Norm(memory.MemoryVector);
 
-            Assert.IsTrue(afterNorm < beforeNorm, $"Memory norm should decrease after remove: before={beforeNorm}, after={afterNorm}");
+            Assert.IsLessThan(beforeNorm, afterNorm, $"Memory norm should decrease after remove: before={beforeNorm}, after={afterNorm}");
         }
 
         // ---------------------------------------------------------------------------
@@ -273,7 +272,7 @@ namespace HolographicMemory.Tests
             var anime = memory.CreateObject("Anime");
             memory.Store(alice, likes, anime);
 
-            float norm = Norm(memory.NormalizedMemoryVector);
+            var norm = Norm(memory.NormalizedMemoryVector);
 
             Assert.AreEqual(1f, norm, delta: 1e-5f);
         }
@@ -369,6 +368,108 @@ namespace HolographicMemory.Tests
             var prop = memory.CreateProperty("Custom", customVec.AsSpan());
 
             Assert.IsTrue(customVec.AsSpan().SequenceEqual(prop.Vector.Span));
+        }
+
+        [TestMethod]
+        public void DeriveSubject_WithFactor_IsMultiplied()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var a = memory.CreateSubject("Test");
+            var b = a.Derive("Half", 0.5f);
+
+            Assert.AreEqual(a.Vector.Length, b.Vector.Length);
+
+            var aSpan = a.Vector.Span;
+            var bSpan = b.Vector.Span;
+            for (var i = 0; i < a.Vector.Length; i++)
+                Assert.AreEqual(aSpan[i] * 0.5f, bSpan[i]);
+        }
+
+        [TestMethod]
+        public void DerivePredicate_WithFactor_IsMultiplied()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var a = memory.CreatePredicate("Test");
+            var b = a.Derive("Half", 0.5f);
+
+            Assert.AreEqual(a.Vector.Length, b.Vector.Length);
+
+            var aSpan = a.Vector.Span;
+            var bSpan = b.Vector.Span;
+            for (var i = 0; i < a.Vector.Length; i++)
+                Assert.AreEqual(aSpan[i] * 0.5f, bSpan[i]);
+        }
+
+        [TestMethod]
+        public void DeriveObject_WithFactor_IsMultiplied()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var a = memory.CreateObject("Test");
+            var b = a.Derive("Half", 0.5f);
+
+            Assert.AreEqual(a.Vector.Length, b.Vector.Length);
+
+            var aSpan = a.Vector.Span;
+            var bSpan = b.Vector.Span;
+            for (var i = 0; i < a.Vector.Length; i++)
+                Assert.AreEqual(aSpan[i] * 0.5f, bSpan[i]);
+        }
+
+        [TestMethod]
+        public void DeriveProperty_WithFactor_IsMultiplied()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var a = memory.CreateProperty("Test");
+            var b = a.Derive("Half", 0.5f);
+
+            Assert.AreEqual(a.Vector.Length, b.Vector.Length);
+
+            var aSpan = a.Vector.Span;
+            var bSpan = b.Vector.Span;
+            for (var i = 0; i < a.Vector.Length; i++)
+                Assert.AreEqual(aSpan[i] * 0.5f, bSpan[i]);
+        }
+
+        [TestMethod]
+        public void Subject_Equals()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var a1 = memory.CreateProperty("Test");
+            var a2 = memory.CreateProperty("Test");
+            var b = memory.CreateProperty("Foo");
+            
+            Assert.IsTrue(a1.Equals(a1));
+            Assert.IsTrue(a1.Equals(a2));
+            Assert.IsFalse(a1.Equals(b));
+            Assert.IsFalse(a1.Equals(null));
+            Assert.IsFalse(a1!.Equals(new object()));
+            Assert.IsFalse(a1!.Equals((object?)null));
+            Assert.IsTrue(a1!.Equals((object?)a1));
+            Assert.IsTrue(a1!.Equals((object?)a2));
+        }
+
+        [TestMethod]
+        public void Subject_InHashset_AddsAndRemoves()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var a1 = memory.CreateProperty("Test");
+            var a2 = memory.CreateProperty("Test");
+            var b = memory.CreateProperty("Foo");
+
+            var set = new HashSet<MemoryProperty<float>>();
+            Assert.IsTrue(set.Add(a1));
+            Assert.IsFalse(set.Add(a2));
+            Assert.IsTrue(set.Add(b));
+
+            Assert.IsTrue(set.Remove(a1));
+            Assert.IsFalse(set.Remove(a2));
+            Assert.IsTrue(set.Remove(b));
         }
     }
 }

@@ -272,9 +272,15 @@ public abstract class BaseMemoryVector<TSelf, TNumber>
         return _hash;
     }
 
+    /// <summary>
+    /// Create a derived vector, by multiplying elements by a factor
+    /// </summary>
+    /// <param name="name"></param>
+    /// <param name="factor"></param>
+    /// <returns></returns>
     public TSelf Derive(string name, float factor)
     {
-        var arr = new TNumber[Vector.Length];
+        var arr = Vector.ToArray();
         Multiply(arr, TNumber.CreateChecked(factor), arr);
         return Create(name, arr);
     }
