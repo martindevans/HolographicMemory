@@ -1,44 +1,45 @@
-﻿using System.Numerics;
+﻿using FftFlat;
+using System.Numerics;
 using static System.Numerics.Tensors.TensorPrimitives;
 
 namespace HolographicMemory;
 
 internal static class HRR
 {
-    public static void Bind<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b, Span<T> output)
+    public static void Bind<T>(FastFourierTransform fft, ReadOnlySpan<T> a, ReadOnlySpan<T> b, Span<T> output)
         where T : INumber<T>, IRootFunctions<T>
     {
         using var fa = Borrow<Complex>.Get(a.Length);
-        FFT(a, fa);
+        FFT(fft, a, fa);
 
         using var fb = Borrow<Complex>.Get(a.Length);
-        FFT(b, fb);
+        FFT(fft, b, fb);
 
         Multiply(fa.Span, fb, fa);
 
-        IFFT(fa, output);
+        IFFT(fft, fa, output);
 
         Normalize(output);
     }
 
-    public static void Unbind<T>(ReadOnlySpan<T> memory, ReadOnlySpan<T> key, Span<T> output)
+    public static void Unbind<T>(FastFourierTransform fft, ReadOnlySpan<T> memory, ReadOnlySpan<T> key, Span<T> output)
         where T : INumber<T>, IRootFunctions<T>
     {
         using var fm = Borrow<Complex>.Get(memory.Length);
-        FFT(memory, fm);
+        FFT(fft, memory, fm);
 
         using var fk = Borrow<Complex>.Get(memory.Length);
-        FFT(key, fk);
+        FFT(fft, key, fk);
         Conjugate(fk);
 
         Multiply(fm.Span, fk, fm);
 
-        IFFT(fm, output);
+        IFFT(fft, fm, output);
 
         Normalize(output);
     }
 
-    private static void FFT<T>(ReadOnlySpan<T> real, Span<Complex> output)
+    private static void FFT<T>(FastFourierTransform fft, ReadOnlySpan<T> real, Span<Complex> output)
         where T : INumber<T>
     {
         // Ensure output is exactly the right length
@@ -48,26 +49,16 @@ internal static class HRR
         for (var i = 0; i < real.Length; i++)
             output[i] = new Complex(double.CreateSaturating(real[i]), 0);
 
-        FFT(output);
+        fft.Forward(output);
     }
 
-    private static void FFT(Span<Complex> buffer)
-    {
-        new FftFlat.FastFourierTransform(buffer.Length).Forward(buffer);
-    }
-
-    private static void IFFT<T>(Span<Complex> freq, Span<T> output)
+    private static void IFFT<T>(FastFourierTransform fft, Span<Complex> freq, Span<T> output)
         where T : INumber<T>
     {
-        IFFT(freq);
+        fft.Inverse(freq);
 
         for (var i = 0; i < freq.Length; i++)
             output[i] = T.CreateSaturating(freq[i].Real);
-    }
-
-    private static void IFFT(Span<Complex> buffer)
-    {
-        new FftFlat.FastFourierTransform(buffer.Length).Inverse(buffer);
     }
 
     private static void Normalize<T>(Span<T> v)
