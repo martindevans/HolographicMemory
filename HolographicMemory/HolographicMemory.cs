@@ -10,7 +10,7 @@ public class HolographicMemory<TNumber>
     where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
 {
     public int Dimensions { get; }
-    public int Seed { get; }
+    private readonly int _seed;
 
     private readonly TNumber[] _memoryVector;
     public ReadOnlySpan<TNumber> MemoryVector => _memoryVector;
@@ -35,7 +35,7 @@ public class HolographicMemory<TNumber>
     public HolographicMemory(int dimensions, int seed)
     {
         Dimensions = dimensions;
-        Seed = seed;
+        _seed = seed;
 
         _memoryVector = new TNumber[Dimensions];
         _normalizedMemory = new TNumber[Dimensions];
@@ -48,7 +48,7 @@ public class HolographicMemory<TNumber>
     private ReadOnlyMemory<TNumber> GenerateVector(string name, string type)
     {
         // Combine elements into seed
-        var seed = HashCode.Combine(Seed, Dimensions);
+        var seed = HashCode.Combine(_seed, Dimensions);
         foreach (var ch in name)
             seed = HashCode.Combine(seed, char.ToLowerInvariant(ch));
         foreach (var ch in type)
@@ -132,9 +132,9 @@ public class HolographicMemory<TNumber>
     
     public void Store(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
-        VectorMismatch.CheckAndThrow(predicate, this, nameof(predicate));
-        VectorMismatch.CheckAndThrow(obj, this, nameof(obj));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
+        VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
         using var bc = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
@@ -147,8 +147,8 @@ public class HolographicMemory<TNumber>
 
     public void Store(MemoryEntity<TNumber> subject, MemoryProperty<TNumber> property)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
-        VectorMismatch.CheckAndThrow(property, this, nameof(property));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(property, this, nameof(property));
 
         using var ab = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
@@ -168,9 +168,9 @@ public class HolographicMemory<TNumber>
 
     public void Remove(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
-        VectorMismatch.CheckAndThrow(predicate, this, nameof(predicate));
-        VectorMismatch.CheckAndThrow(obj, this, nameof(obj));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
+        VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
         using var bc = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
@@ -183,8 +183,8 @@ public class HolographicMemory<TNumber>
 
     public void Remove(MemoryEntity<TNumber> subject, MemoryProperty<TNumber> property)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
-        VectorMismatch.CheckAndThrow(property, this, nameof(property));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(property, this, nameof(property));
 
         using var ab = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
@@ -226,8 +226,8 @@ public class HolographicMemory<TNumber>
     /// <param name="output">Output span that receives the recovered subject-like vector.</param>
     public void QuerySubjects(MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj, Span<TNumber> output)
     {
-        VectorMismatch.CheckAndThrow(predicate, this, nameof(predicate));
-        VectorMismatch.CheckAndThrow(obj, this, nameof(obj));
+        VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
+        VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
         // Calculate query vector
         using var key = Borrow<TNumber>.Get(Dimensions);
@@ -245,8 +245,8 @@ public class HolographicMemory<TNumber>
     /// <param name="output">Output span that receives the recovered object-like vector.</param>
     public void QueryObjects(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, Span<TNumber> output)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
-        VectorMismatch.CheckAndThrow(predicate, this, nameof(predicate));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
 
         using var x = Borrow<TNumber>.Get(Dimensions);
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
@@ -262,8 +262,8 @@ public class HolographicMemory<TNumber>
     /// <param name="output">Output span that receives the recovered predicate-like vector.</param>
     public void QueryPredicates(MemoryEntity<TNumber> subject, MemoryEntity<TNumber> obj, Span<TNumber> output)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
-        VectorMismatch.CheckAndThrow(obj, this, nameof(obj));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
         using var x = Borrow<TNumber>.Get(Dimensions);
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
@@ -278,7 +278,7 @@ public class HolographicMemory<TNumber>
     /// <param name="output">Output span that receives the recovered property-like vector.</param>
     public void QueryProperties(MemoryEntity<TNumber> subject, Span<TNumber> output)
     {
-        VectorMismatch.CheckAndThrow(subject, this, nameof(subject));
+        VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
 
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, output);
     }
@@ -290,7 +290,7 @@ public class HolographicMemory<TNumber>
     /// <param name="output">Output span that receives the recovered subject-like vector.</param>
     public void QuerySubjects(MemoryProperty<TNumber> property, Span<TNumber> output)
     {
-        VectorMismatch.CheckAndThrow(property, this, nameof(property));
+        VectorMismatchException.CheckAndThrow(property, this, nameof(property));
 
         Unbind(_fft, NormalizedMemoryVector, property.Vector.Span, output);
     }
