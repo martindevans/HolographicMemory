@@ -29,7 +29,7 @@ public class HolographicMemory<TNumber>
         }
     }
 
-    private FastFourierTransform _fft;
+    private readonly FastFourierTransform _fft;
 
     public HolographicMemory(int dimensions, int seed)
     {
@@ -72,18 +72,19 @@ public class HolographicMemory<TNumber>
     }
 
     /// <summary>
-    /// Create a new subject vector (e.g. "Alice")
+    /// Create a new entity vector (e.g. "Alice")
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public MemorySubject<TNumber> CreateSubject(string name)
+    public MemoryEntity<TNumber> CreateEntity(string name)
     {
-        return new MemorySubject<TNumber>(name, GenerateVector(name, "SUBJECT"));
+        return new MemoryEntity<TNumber>(name, GenerateVector(name, "ENTITY"), this);
     }
 
-    public MemorySubject<TNumber> CreateSubject(string name, ReadOnlySpan<TNumber> value)
+    public MemoryEntity<TNumber> CreateEntity(string name, ReadOnlySpan<TNumber> value)
     {
-        return new MemorySubject<TNumber>(name, value.ToArray());
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
+        return new MemoryEntity<TNumber>(name, value.ToArray(), this);
     }
 
     /// <summary>
@@ -93,27 +94,13 @@ public class HolographicMemory<TNumber>
     /// <returns></returns>
     public MemoryPredicate<TNumber> CreatePredicate(string name)
     {
-        return new MemoryPredicate<TNumber>(name, GenerateVector(name, "PREDICATE"));
+        return new MemoryPredicate<TNumber>(name, GenerateVector(name, "PREDICATE"), this);
     }
 
     public MemoryPredicate<TNumber> CreatePredicate(string name, ReadOnlySpan<TNumber> value)
     {
-        return new MemoryPredicate<TNumber>(name, value.ToArray());
-    }
-
-    /// <summary>
-    /// Create a new object vector (e.g. "Pizza")
-    /// </summary>
-    /// <param name="name"></param>
-    /// <returns></returns>
-    public MemoryObject<TNumber> CreateObject(string name)
-    {
-        return new MemoryObject<TNumber>(name, GenerateVector(name, "OBJECT"));
-    }
-
-    public MemoryObject<TNumber> CreateObject(string name, ReadOnlySpan<TNumber> value)
-    {
-        return new MemoryObject<TNumber>(name, value.ToArray());
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
+        return new MemoryPredicate<TNumber>(name, value.ToArray(), this);
     }
 
     /// <summary>
@@ -123,12 +110,13 @@ public class HolographicMemory<TNumber>
     /// <returns></returns>
     public MemoryProperty<TNumber> CreateProperty(string name)
     {
-        return new MemoryProperty<TNumber>(name, GenerateVector(name, "PROPERTY"));
+        return new MemoryProperty<TNumber>(name, GenerateVector(name, "PROPERTY"), this);
     }
 
     public MemoryProperty<TNumber> CreateProperty(string name, ReadOnlySpan<TNumber> value)
     {
-        return new MemoryProperty<TNumber>(name, value.ToArray());
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
+        return new MemoryProperty<TNumber>(name, value.ToArray(), this);
     }
     #endregion
 
@@ -141,7 +129,7 @@ public class HolographicMemory<TNumber>
         _requiresNormalization = true;
     }
     
-    public void Store(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryObject<TNumber> obj)
+    public void Store(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj)
     {
         using var bc = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
@@ -152,7 +140,7 @@ public class HolographicMemory<TNumber>
         Store(abc);
     }
 
-    public void Store(MemorySubject<TNumber> subject, MemoryProperty<TNumber> property)
+    public void Store(MemoryEntity<TNumber> subject, MemoryProperty<TNumber> property)
     {
         using var ab = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
@@ -170,7 +158,7 @@ public class HolographicMemory<TNumber>
         _requiresNormalization = true;
     }
 
-    public void Remove(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryObject<TNumber> obj)
+    public void Remove(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj)
     {
         using var bc = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
@@ -181,7 +169,7 @@ public class HolographicMemory<TNumber>
         Remove(abc);
     }
 
-    public void Remove(MemorySubject<TNumber> subject, MemoryProperty<TNumber> property)
+    public void Remove(MemoryEntity<TNumber> subject, MemoryProperty<TNumber> property)
     {
         using var ab = Borrow<TNumber>.Get(Dimensions);
         Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
@@ -201,12 +189,12 @@ public class HolographicMemory<TNumber>
 
     #region query
     /// <summary>
-    /// Query a <c>_ P O</c> pattern and recover matching subjects.
+    /// Given a Predicate and Object, extract matching Subjects.
     /// </summary>
     /// <param name="predicate">Predicate part of the query key.</param>
     /// <param name="obj">Object part of the query key.</param>
     /// <param name="output">Output span that receives the recovered subject-like vector.</param>
-    public void Query(MemoryPredicate<TNumber> predicate, MemoryObject<TNumber> obj, Span<TNumber> output)
+    public void QuerySubjects(MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj, Span<TNumber> output)
     {
         // Calculate query vector
         using var key = Borrow<TNumber>.Get(Dimensions);
@@ -217,12 +205,12 @@ public class HolographicMemory<TNumber>
     }
 
     /// <summary>
-    /// Query an <c>S P _</c> pattern and recover matching objects.
+    /// Given a Subject and Predicate, extract matching Objects.
     /// </summary>
     /// <param name="subject">Subject part of the query key.</param>
     /// <param name="predicate">Predicate part of the query key.</param>
     /// <param name="output">Output span that receives the recovered object-like vector.</param>
-    public void Query(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, Span<TNumber> output)
+    public void QueryObjects(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, Span<TNumber> output)
     {
         using var x = Borrow<TNumber>.Get(Dimensions);
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
@@ -231,12 +219,12 @@ public class HolographicMemory<TNumber>
     }
 
     /// <summary>
-    /// Query an <c>S _ O</c> pattern and recover matching predicates.
+    /// Given a Subject and Object, extract matching Predicates.
     /// </summary>
     /// <param name="subject">Subject part of the query key.</param>
     /// <param name="obj">Object part of the query key.</param>
     /// <param name="output">Output span that receives the recovered predicate-like vector.</param>
-    public void Query(MemorySubject<TNumber> subject, MemoryObject<TNumber> obj, Span<TNumber> output)
+    public void QueryPredicates(MemoryEntity<TNumber> subject, MemoryEntity<TNumber> obj, Span<TNumber> output)
     {
         using var x = Borrow<TNumber>.Get(Dimensions);
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
@@ -249,7 +237,7 @@ public class HolographicMemory<TNumber>
     /// </summary>
     /// <param name="subject">Subject part of the query key.</param>
     /// <param name="output">Output span that receives the recovered property-like vector.</param>
-    public void Query(MemorySubject<TNumber> subject, Span<TNumber> output)
+    public void QueryProperties(MemoryEntity<TNumber> subject, Span<TNumber> output)
     {
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, output);
     }
@@ -259,127 +247,9 @@ public class HolographicMemory<TNumber>
     /// </summary>
     /// <param name="property">Property part of the query key.</param>
     /// <param name="output">Output span that receives the recovered subject-like vector.</param>
-    public void Query(MemoryProperty<TNumber> property, Span<TNumber> output)
+    public void QuerySubjects(MemoryProperty<TNumber> property, Span<TNumber> output)
     {
         Unbind(_fft, NormalizedMemoryVector, property.Vector.Span, output);
     }
     #endregion
-}
-
-public abstract class BaseMemoryVector<TSelf, TNumber>
-    : IEquatable<TSelf>
-    where TSelf : BaseMemoryVector<TSelf, TNumber>
-    where TNumber : INumber<TNumber>
-{
-    public string Name { get; init; }
-    public ReadOnlyMemory<TNumber> Vector { get; init; }
-
-    private readonly int _hash;
-
-    internal BaseMemoryVector(string name, ReadOnlyMemory<TNumber> vector)
-    {
-        Name = name;
-        Vector = vector;
-
-        _hash = Name.GetHashCode();
-        foreach (var item in vector.Span)
-            _hash = HashCode.Combine(_hash, item);
-    }
-
-    public bool Equals(TSelf? other)
-    {
-        if (other == null)
-            return false;
-        
-        return Name == other.Name
-            && Vector.Span.SequenceEqual(other.Vector.Span);
-    }
-
-    public override bool Equals(object? obj)
-    {
-        if (obj is null)
-            return false;
-        if (ReferenceEquals(this, obj))
-            return true;
-        if (obj.GetType() != typeof(TSelf))
-            return false;
-        
-        return Equals((TSelf)obj);
-    }
-
-    public override int GetHashCode()
-    {
-        return _hash;
-    }
-
-    /// <summary>
-    /// Create a derived vector, by multiplying elements by a factor
-    /// </summary>
-    /// <param name="name"></param>
-    /// <param name="factor"></param>
-    /// <returns></returns>
-    public TSelf Derive(string name, float factor)
-    {
-        var arr = Vector.ToArray();
-        Multiply(arr, TNumber.CreateChecked(factor), arr);
-        return Create(name, arr);
-    }
-
-    protected abstract TSelf Create(string name, TNumber[] vec);
-}
-
-public class MemorySubject<TNumber>
-    : BaseMemoryVector<MemorySubject<TNumber>, TNumber> where TNumber : INumber<TNumber>
-{
-    internal MemorySubject(string name, ReadOnlyMemory<TNumber> vector)
-        : base(name, vector)
-    {
-    }
-
-    protected override MemorySubject<TNumber> Create(string name, TNumber[] vec)
-    {
-        return new MemorySubject<TNumber>(name, vec);
-    }
-}
-
-public class MemoryPredicate<TNumber>
-    : BaseMemoryVector<MemoryPredicate<TNumber>, TNumber> where TNumber : INumber<TNumber>
-{
-    internal MemoryPredicate(string name, ReadOnlyMemory<TNumber> vector)
-        : base(name, vector)
-    {
-    }
-
-    protected override MemoryPredicate<TNumber> Create(string name, TNumber[] vec)
-    {
-        return new MemoryPredicate<TNumber>(name, vec);
-    }
-}
-
-public class MemoryObject<TNumber>
-    : BaseMemoryVector<MemoryObject<TNumber>, TNumber> where TNumber : INumber<TNumber>
-{
-    internal MemoryObject(string name, ReadOnlyMemory<TNumber> vector)
-        : base(name, vector)
-    {
-    }
-
-    protected override MemoryObject<TNumber> Create(string name, TNumber[] vec)
-    {
-        return new MemoryObject<TNumber>(name, vec);
-    }
-}
-
-public class MemoryProperty<TNumber>
-    : BaseMemoryVector<MemoryProperty<TNumber>, TNumber> where TNumber : INumber<TNumber>
-{
-    internal MemoryProperty(string name, ReadOnlyMemory<TNumber> vector)
-        : base(name, vector)
-    {
-    }
-
-    protected override MemoryProperty<TNumber> Create(string name, TNumber[] vec)
-    {
-        return new MemoryProperty<TNumber>(name, vec);
-    }
 }

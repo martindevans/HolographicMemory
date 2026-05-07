@@ -4,8 +4,8 @@ using static System.Numerics.Tensors.TensorPrimitives;
 var memory = new HolographicMemory<float>(dimensions:8192, seed:13);
 
 // People
-var Martin = memory.CreateSubject("Martin");
-var Alice = memory.CreateSubject("Alice");
+var Martin = memory.CreateEntity("Martin");
+var Alice = memory.CreateEntity("Alice");
 
 // Relations
 var Likes = memory.CreatePredicate("Likes");
@@ -13,10 +13,10 @@ var Likes = memory.CreatePredicate("Likes");
 var Eats = memory.CreatePredicate("Eats");
 
 // Topics
-var Anime = memory.CreateObject("Anime");
-var Programming = memory.CreateObject("Programming");
-var Opera = memory.CreateObject("Opera");
-var Pizza = memory.CreateObject("Pizza");
+var Anime = memory.CreateEntity("Anime");
+var Programming = memory.CreateEntity("Programming");
+var Opera = memory.CreateEntity("Opera");
+var Pizza = memory.CreateEntity("Pizza");
 
 // Properties
 var Man = memory.CreateProperty("Man");
@@ -35,13 +35,13 @@ memory.Store(Martin, Eats, Pizza);
 
 // Who likes anime?
 var result = new float[memory.Dimensions];
-memory.Query(Likes, Anime, result);
+memory.QuerySubjects(Likes, Anime, result);
 Console.WriteLine(Dot(result, Martin.Vector.Span));
 Console.WriteLine(Dot(result, Alice.Vector.Span));
 
 // What does Martin like?
 var martinLikes = new float[memory.Dimensions];
-memory.Query(Martin, Likes, martinLikes);
+memory.QueryObjects(Martin, Likes, martinLikes);
 
 // decode (compare similarity)
 Console.WriteLine(Dot(martinLikes, Anime.Vector.Span));
@@ -50,7 +50,7 @@ Console.WriteLine(Dot(martinLikes, Opera.Vector.Span));
 
 // What does Alice like?
 var aliceLikes = new float[memory.Dimensions];
-memory.Query(Alice, Likes, aliceLikes);
+memory.QueryObjects(Alice, Likes, aliceLikes);
 
 // decode (compare similarity)
 Console.WriteLine(Dot(aliceLikes, Anime.Vector.Span));
@@ -62,7 +62,7 @@ memory.Remove(Alice, Likes, Opera);
 
 // What does Alice like?
 var aliceLikes2 = new float[memory.Dimensions];
-memory.Query(Alice, Likes, aliceLikes2);
+memory.QueryObjects(Alice, Likes, aliceLikes2);
 
 // decode (compare similarity)
 Console.WriteLine(Dot(aliceLikes2, Anime.Vector.Span));
