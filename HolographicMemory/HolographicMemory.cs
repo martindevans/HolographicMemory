@@ -223,6 +223,24 @@ public class HolographicMemory<TNumber>
 
         Unbind(_fft, x, predicate.Vector.Span, output);
     }
+
+    public void Query(MemorySubject<TNumber> subject, MemoryObject<TNumber> obj, Span<TNumber> output)
+    {
+        using var x = Borrow<TNumber>.Get(Dimensions);
+        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
+
+        Unbind(_fft, x, obj.Vector.Span, output);
+    }
+
+    public void Query(MemorySubject<TNumber> subject, Span<TNumber> output)
+    {
+        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, output);
+    }
+
+    public void Query(MemoryProperty<TNumber> property, Span<TNumber> output)
+    {
+        Unbind(_fft, NormalizedMemoryVector, property.Vector.Span, output);
+    }
     #endregion
 }
 
