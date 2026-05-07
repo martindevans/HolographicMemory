@@ -201,11 +201,11 @@ public class HolographicMemory<TNumber>
 
     #region query
     /// <summary>
-    /// Get subject that complete a subject/predicate/object triple
+    /// Query a <c>_ P O</c> pattern and recover matching subjects.
     /// </summary>
-    /// <param name="predicate"></param>
-    /// <param name="obj"></param>
-    /// <param name="output"></param>
+    /// <param name="predicate">Predicate part of the query key.</param>
+    /// <param name="obj">Object part of the query key.</param>
+    /// <param name="output">Output span that receives the recovered subject-like vector.</param>
     public void Query(MemoryPredicate<TNumber> predicate, MemoryObject<TNumber> obj, Span<TNumber> output)
     {
         // Calculate query vector
@@ -216,12 +216,52 @@ public class HolographicMemory<TNumber>
         Unbind(_fft, NormalizedMemoryVector, key, output);
     }
 
+    /// <summary>
+    /// Query an <c>S P _</c> pattern and recover matching objects.
+    /// </summary>
+    /// <param name="subject">Subject part of the query key.</param>
+    /// <param name="predicate">Predicate part of the query key.</param>
+    /// <param name="output">Output span that receives the recovered object-like vector.</param>
     public void Query(MemorySubject<TNumber> subject, MemoryPredicate<TNumber> predicate, Span<TNumber> output)
     {
         using var x = Borrow<TNumber>.Get(Dimensions);
         Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
 
         Unbind(_fft, x, predicate.Vector.Span, output);
+    }
+
+    /// <summary>
+    /// Query an <c>S _ O</c> pattern and recover matching predicates.
+    /// </summary>
+    /// <param name="subject">Subject part of the query key.</param>
+    /// <param name="obj">Object part of the query key.</param>
+    /// <param name="output">Output span that receives the recovered predicate-like vector.</param>
+    public void Query(MemorySubject<TNumber> subject, MemoryObject<TNumber> obj, Span<TNumber> output)
+    {
+        using var x = Borrow<TNumber>.Get(Dimensions);
+        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
+
+        Unbind(_fft, x, obj.Vector.Span, output);
+    }
+
+    /// <summary>
+    /// Query a subject/property pair store with a subject key and recover matching properties.
+    /// </summary>
+    /// <param name="subject">Subject part of the query key.</param>
+    /// <param name="output">Output span that receives the recovered property-like vector.</param>
+    public void Query(MemorySubject<TNumber> subject, Span<TNumber> output)
+    {
+        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, output);
+    }
+
+    /// <summary>
+    /// Query a subject/property pair store with a property key and recover matching subjects.
+    /// </summary>
+    /// <param name="property">Property part of the query key.</param>
+    /// <param name="output">Output span that receives the recovered subject-like vector.</param>
+    public void Query(MemoryProperty<TNumber> property, Span<TNumber> output)
+    {
+        Unbind(_fft, NormalizedMemoryVector, property.Vector.Span, output);
     }
     #endregion
 }

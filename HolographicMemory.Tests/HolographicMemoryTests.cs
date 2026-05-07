@@ -126,6 +126,28 @@ namespace HolographicMemory.Tests
         }
 
         [TestMethod]
+        public void Query_SubjectObject_ReturnsStoredPredicate()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var alice = memory.CreateSubject("Alice");
+            var likes = memory.CreatePredicate("Likes");
+            var eats = memory.CreatePredicate("Eats");
+            var opera = memory.CreateObject("Opera");
+
+            memory.Store(alice, likes, opera);
+
+            var result = new float[Dims];
+            memory.Query(alice, opera, result);
+
+            var likesSim = Dot(result, likes.Vector.Span);
+            var eatsSim = Dot(result, eats.Vector.Span);
+
+            Assert.IsGreaterThan(HighSimilarity, likesSim, $"Likes similarity {likesSim} should be high");
+            Assert.IsGreaterThan(eatsSim, likesSim, $"Likes similarity {likesSim} should exceed Eats' {eatsSim}");
+        }
+
+        [TestMethod]
         public void Query_MultipleFacts_AreDiscriminated()
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
@@ -171,6 +193,48 @@ namespace HolographicMemory.Tests
             var normAfter = Norm(memory.MemoryVector);
 
             Assert.IsGreaterThan(normBefore, normAfter, $"Memory norm should increase after storing a property: before={normBefore}, after={normAfter}");
+        }
+
+        [TestMethod]
+        public void Query_Subject_ReturnsStoredProperty()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var alice = memory.CreateSubject("Alice");
+            var woman = memory.CreateProperty("Woman");
+            var man = memory.CreateProperty("Man");
+
+            memory.Store(alice, woman);
+
+            var result = new float[Dims];
+            memory.Query(alice, result);
+
+            var womanSim = Dot(result, woman.Vector.Span);
+            var manSim = Dot(result, man.Vector.Span);
+
+            Assert.IsGreaterThan(HighSimilarity, womanSim, $"Woman similarity {womanSim} should be high");
+            Assert.IsGreaterThan(manSim, womanSim, $"Woman similarity {womanSim} should exceed Man's {manSim}");
+        }
+
+        [TestMethod]
+        public void Query_Property_ReturnsMatchingSubject()
+        {
+            var memory = new HolographicMemory<float>(Dims, Seed);
+
+            var alice = memory.CreateSubject("Alice");
+            var martin = memory.CreateSubject("Martin");
+            var woman = memory.CreateProperty("Woman");
+
+            memory.Store(alice, woman);
+
+            var result = new float[Dims];
+            memory.Query(woman, result);
+
+            var aliceSim = Dot(result, alice.Vector.Span);
+            var martinSim = Dot(result, martin.Vector.Span);
+
+            Assert.IsGreaterThan(HighSimilarity, aliceSim, $"Alice similarity {aliceSim} should be high");
+            Assert.IsGreaterThan(martinSim, aliceSim, $"Alice similarity {aliceSim} should exceed Martin's {martinSim}");
         }
 
         // ---------------------------------------------------------------------------
