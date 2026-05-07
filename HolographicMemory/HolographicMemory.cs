@@ -83,6 +83,7 @@ public class HolographicMemory<TNumber>
 
     public MemoryEntity<TNumber> CreateEntity(string name, ReadOnlySpan<TNumber> value)
     {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
         return new MemoryEntity<TNumber>(name, value.ToArray(), this);
     }
 
@@ -98,6 +99,7 @@ public class HolographicMemory<TNumber>
 
     public MemoryPredicate<TNumber> CreatePredicate(string name, ReadOnlySpan<TNumber> value)
     {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
         return new MemoryPredicate<TNumber>(name, value.ToArray(), this);
     }
 
@@ -113,6 +115,7 @@ public class HolographicMemory<TNumber>
 
     public MemoryProperty<TNumber> CreateProperty(string name, ReadOnlySpan<TNumber> value)
     {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
         return new MemoryProperty<TNumber>(name, value.ToArray(), this);
     }
     #endregion
