@@ -74,7 +74,7 @@ public abstract class BaseMemoryVector<TSelf, TNumber>
 }
 
 /// <summary>
-/// A predicate linking a two entities (e.g. eats)
+/// A predicate linking two entities (e.g. eats)
 /// </summary>
 /// <typeparam name="TNumber"></typeparam>
 public class MemoryPredicate<TNumber>
