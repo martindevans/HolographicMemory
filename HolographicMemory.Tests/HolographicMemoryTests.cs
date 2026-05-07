@@ -24,8 +24,8 @@ namespace HolographicMemory.Tests
             var m1 = new HolographicMemory<float>(Dims, Seed);
             var m2 = new HolographicMemory<float>(Dims, Seed);
 
-            var a1 = m1.CreateSubject("Alice");
-            var a2 = m2.CreateSubject("Alice");
+            var a1 = m1.CreateEntity("Alice");
+            var a2 = m2.CreateEntity("Alice");
 
             Assert.IsTrue(a1.Vector.Span.SequenceEqual(a2.Vector.Span));
         }
@@ -48,8 +48,8 @@ namespace HolographicMemory.Tests
             var m1 = new HolographicMemory<float>(Dims, Seed);
             var m2 = new HolographicMemory<float>(Dims, Seed);
 
-            var o1 = m1.CreateObject("Pizza");
-            var o2 = m2.CreateObject("Pizza");
+            var o1 = m1.CreateEntity("Pizza");
+            var o2 = m2.CreateEntity("Pizza");
 
             Assert.IsTrue(o1.Vector.Span.SequenceEqual(o2.Vector.Span));
         }
@@ -71,8 +71,8 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
-            var bob = memory.CreateSubject("Bob");
+            var alice = memory.CreateEntity("Alice");
+            var bob = memory.CreateEntity("Bob");
 
             Assert.IsFalse(alice.Vector.Span.SequenceEqual(bob.Vector.Span));
         }
@@ -86,15 +86,15 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
-            var martin = memory.CreateSubject("Martin");
+            var alice = memory.CreateEntity("Alice");
+            var martin = memory.CreateEntity("Martin");
             var likes = memory.CreatePredicate("Likes");
-            var anime = memory.CreateObject("Anime");
+            var anime = memory.CreateEntity("Anime");
 
             memory.Store(alice, likes, anime);
 
             var result = new float[Dims];
-            memory.Query(likes, anime, result);
+            memory.QuerySubjects(likes, anime, result);
 
             var aliceSim = Dot(result, alice.Vector.Span);
             var martinSim = Dot(result, martin.Vector.Span);
@@ -108,15 +108,15 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
-            var opera = memory.CreateObject("Opera");
-            var pizza = memory.CreateObject("Pizza");
+            var opera = memory.CreateEntity("Opera");
+            var pizza = memory.CreateEntity("Pizza");
 
             memory.Store(alice, likes, opera);
 
             var result = new float[Dims];
-            memory.Query(alice, likes, result);
+            memory.QueryObjects(alice, likes, result);
 
             var operaSim = Dot(result, opera.Vector.Span);
             var pizzaSim = Dot(result, pizza.Vector.Span);
@@ -130,15 +130,15 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
             var eats = memory.CreatePredicate("Eats");
-            var opera = memory.CreateObject("Opera");
+            var opera = memory.CreateEntity("Opera");
 
             memory.Store(alice, likes, opera);
 
             var result = new float[Dims];
-            memory.Query(alice, opera, result);
+            memory.QueryPredicates(alice, opera, result);
 
             var likesSim = Dot(result, likes.Vector.Span);
             var eatsSim = Dot(result, eats.Vector.Span);
@@ -152,11 +152,11 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
-            var martin = memory.CreateSubject("Martin");
+            var alice = memory.CreateEntity("Alice");
+            var martin = memory.CreateEntity("Martin");
             var likes = memory.CreatePredicate("Likes");
-            var anime = memory.CreateObject("Anime");
-            var opera = memory.CreateObject("Opera");
+            var anime = memory.CreateEntity("Anime");
+            var opera = memory.CreateEntity("Opera");
 
             memory.Store(martin, likes, anime);
             memory.Store(alice, likes, opera);
@@ -164,13 +164,13 @@ namespace HolographicMemory.Tests
             var result = new float[Dims];
 
             // Query: who likes anime? → Martin
-            memory.Query(likes, anime, result);
+            memory.QuerySubjects(likes, anime, result);
             var martinSim = Dot(result, martin.Vector.Span);
             var aliceSim = Dot(result, alice.Vector.Span);
             Assert.IsGreaterThan(aliceSim, martinSim, $"Martin ({martinSim}) should score higher than Alice ({aliceSim}) for Anime");
 
             // Query: who likes opera? → Alice
-            memory.Query(likes, opera, result);
+            memory.QuerySubjects(likes, opera, result);
             martinSim = Dot(result, martin.Vector.Span);
             aliceSim = Dot(result, alice.Vector.Span);
             Assert.IsGreaterThan(martinSim, aliceSim, $"Alice ({aliceSim}) should score higher than Martin ({martinSim}) for Opera");
@@ -185,7 +185,7 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var female = memory.CreateProperty("Female");
 
             var normBefore = Norm(memory.MemoryVector);
@@ -200,14 +200,14 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var woman = memory.CreateProperty("Woman");
             var man = memory.CreateProperty("Man");
 
             memory.Store(alice, woman);
 
             var result = new float[Dims];
-            memory.Query(alice, result);
+            memory.QueryProperties(alice, result);
 
             var womanSim = Dot(result, woman.Vector.Span);
             var manSim = Dot(result, man.Vector.Span);
@@ -221,14 +221,14 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
-            var martin = memory.CreateSubject("Martin");
+            var alice = memory.CreateEntity("Alice");
+            var martin = memory.CreateEntity("Martin");
             var woman = memory.CreateProperty("Woman");
 
             memory.Store(alice, woman);
 
             var result = new float[Dims];
-            memory.Query(woman, result);
+            memory.QuerySubjects(woman, result);
 
             var aliceSim = Dot(result, alice.Vector.Span);
             var martinSim = Dot(result, martin.Vector.Span);
@@ -246,24 +246,24 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
-            var martin = memory.CreateSubject("Martin");
+            var alice = memory.CreateEntity("Alice");
+            var martin = memory.CreateEntity("Martin");
             var likes = memory.CreatePredicate("Likes");
-            var opera = memory.CreateObject("Opera");
-            var anime = memory.CreateObject("Anime");
+            var opera = memory.CreateEntity("Opera");
+            var anime = memory.CreateEntity("Anime");
 
             // Store two facts so the memory is non-empty after the remove
             memory.Store(alice, likes, opera);
             memory.Store(martin, likes, anime);
 
             var resultBefore = new float[Dims];
-            memory.Query(likes, opera, resultBefore);
+            memory.QuerySubjects(likes, opera, resultBefore);
             var simBefore = Dot(resultBefore, alice.Vector.Span);
 
             memory.Remove(alice, likes, opera);
 
             var resultAfter = new float[Dims];
-            memory.Query(likes, opera, resultAfter);
+            memory.QuerySubjects(likes, opera, resultAfter);
             var simAfter = Dot(resultAfter, alice.Vector.Span);
 
             Assert.IsLessThan(simBefore, simAfter, $"Similarity after remove ({simAfter}) should be less than before ({simBefore})");
@@ -274,7 +274,7 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var female = memory.CreateProperty("Female");
 
             memory.Store(alice, female);
@@ -295,9 +295,9 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
-            var opera = memory.CreateObject("Opera");
+            var opera = memory.CreateEntity("Opera");
             memory.Store(alice, likes, opera);
 
             memory.Clear();
@@ -311,9 +311,9 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
-            var opera = memory.CreateObject("Opera");
+            var opera = memory.CreateEntity("Opera");
             memory.Store(alice, likes, opera);
 
             memory.Clear();
@@ -331,9 +331,9 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
-            var anime = memory.CreateObject("Anime");
+            var anime = memory.CreateEntity("Anime");
             memory.Store(alice, likes, anime);
 
             var norm = Norm(memory.NormalizedMemoryVector);
@@ -346,9 +346,9 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var alice = memory.CreateSubject("Alice");
+            var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
-            var anime = memory.CreateObject("Anime");
+            var anime = memory.CreateEntity("Anime");
             memory.Store(alice, likes, anime);
 
             // Access twice; second access should not recompute and values should match
@@ -390,7 +390,7 @@ namespace HolographicMemory.Tests
             var customVec = new float[Dims];
             customVec[0] = 1f;
 
-            var subject = memory.CreateSubject("Custom", customVec.AsSpan());
+            var subject = memory.CreateEntity("Custom", customVec.AsSpan());
 
             Assert.IsTrue(customVec.AsSpan().SequenceEqual(subject.Vector.Span));
         }
@@ -416,7 +416,7 @@ namespace HolographicMemory.Tests
             var customVec = new float[Dims];
             customVec[2] = 1f;
 
-            var obj = memory.CreateObject("Custom", customVec.AsSpan());
+            var obj = memory.CreateEntity("Custom", customVec.AsSpan());
 
             Assert.IsTrue(customVec.AsSpan().SequenceEqual(obj.Vector.Span));
         }
@@ -439,7 +439,7 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var a = memory.CreateSubject("Test");
+            var a = memory.CreateEntity("Test");
             var b = a.Derive("Half", 0.5f);
 
             Assert.AreEqual(a.Vector.Length, b.Vector.Length);
@@ -471,7 +471,7 @@ namespace HolographicMemory.Tests
         {
             var memory = new HolographicMemory<float>(Dims, Seed);
 
-            var a = memory.CreateObject("Test");
+            var a = memory.CreateEntity("Test");
             var b = a.Derive("Half", 0.5f);
 
             Assert.AreEqual(a.Vector.Length, b.Vector.Length);
