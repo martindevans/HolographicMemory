@@ -78,7 +78,7 @@ public class HolographicMemory<TNumber>
     /// <returns></returns>
     public MemoryEntity<TNumber> CreateEntity(string name)
     {
-        return new MemoryEntity<TNumber>(name, GenerateVector(name, "SUBJECT"), this);
+        return new MemoryEntity<TNumber>(name, GenerateVector(name, "ENTITY"), this);
     }
 
     public MemoryEntity<TNumber> CreateEntity(string name, ReadOnlySpan<TNumber> value)
