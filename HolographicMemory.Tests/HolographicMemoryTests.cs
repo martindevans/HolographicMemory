@@ -512,7 +512,7 @@ namespace HolographicMemory.Tests
             Assert.IsFalse(a1.Equals(b));
             Assert.IsFalse(a1.Equals(null));
             Assert.IsFalse(a1!.Equals(new object()));
-            Assert.IsFalse(a1!.Equals((object?)null));
+            Assert.IsFalse(a1.Equals((object?)null));
             Assert.IsTrue(a1!.Equals((object?)a1));
             Assert.IsTrue(a1!.Equals((object?)a2));
         }
