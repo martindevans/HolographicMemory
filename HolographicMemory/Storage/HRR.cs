@@ -1,8 +1,9 @@
 ﻿using FftFlat;
+using HolographicMemory.Extensions;
 using System.Numerics;
 using static System.Numerics.Tensors.TensorPrimitives;
 
-namespace HolographicMemory;
+namespace HolographicMemory.Storage;
 
 internal static class HRR
 {
@@ -71,7 +72,7 @@ internal static class HRR
         where T : INumber<T>, IRootFunctions<T>
     {
         var norm = Norm(input);
-        Divide(input, norm, output);
+        Multiply(input, T.One / Norm(input), output);
     }
 
     private static void Conjugate(Span<Complex> buffer)

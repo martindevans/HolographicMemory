@@ -1,6 +1,6 @@
 ﻿using System.Buffers;
 
-namespace HolographicMemory;
+namespace HolographicMemory.Extensions;
 
 internal readonly record struct Borrow<T>
     : IDisposable
@@ -9,8 +9,9 @@ internal readonly record struct Borrow<T>
     private readonly int _length;
     private readonly ArrayPool<T> _pool;
 
-    public Span<T> Span => this;
-    
+    public Span<T> Span => Memory.Span;
+    public Memory<T> Memory => _array.AsMemory(0, _length);
+
     public Borrow(T[] array, int length, ArrayPool<T> pool)
     {
         _array = array;
@@ -32,6 +33,6 @@ internal readonly record struct Borrow<T>
 
     public static implicit operator Span<T>(Borrow<T> self)
     {
-        return self._array.AsSpan(0, self._length);
+        return self.Span;
     }
 }

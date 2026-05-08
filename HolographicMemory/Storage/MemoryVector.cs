@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using System.Numerics.Tensors;
 
-namespace HolographicMemory;
+namespace HolographicMemory.Storage;
 
 /// <summary>
 /// Base class for holographic memory vectors
@@ -15,12 +15,13 @@ public abstract class BaseMemoryVector<TSelf, TNumber>
 {
     public string Name { get; init; }
     public ReadOnlyMemory<TNumber> Vector { get; init; }
-
-    internal HolographicMemory<TNumber> Parent { get; }
+    public abstract MemoryVectorType Type { get; }
+    
+    internal HolographicStorage<TNumber> Parent { get; }
     
     private readonly int _hash;
 
-    internal BaseMemoryVector(string name, ReadOnlyMemory<TNumber> vector, HolographicMemory<TNumber> parent)
+    internal BaseMemoryVector(string name, ReadOnlyMemory<TNumber> vector, HolographicStorage<TNumber> parent)
     {
         Name = name;
         Vector = vector;
@@ -70,7 +71,7 @@ public abstract class BaseMemoryVector<TSelf, TNumber>
         return Create(name, Parent, arr);
     }
 
-    protected abstract TSelf Create(string name, HolographicMemory<TNumber> parent, TNumber[] vec);
+    protected abstract TSelf Create(string name, HolographicStorage<TNumber> parent, TNumber[] vec);
 }
 
 /// <summary>
@@ -81,12 +82,14 @@ public class MemoryPredicate<TNumber>
     : BaseMemoryVector<MemoryPredicate<TNumber>, TNumber>
     where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
 {
-    internal MemoryPredicate(string name, ReadOnlyMemory<TNumber> vector, HolographicMemory<TNumber> parent)
+    public override MemoryVectorType Type => MemoryVectorType.Predicate;
+
+    internal MemoryPredicate(string name, ReadOnlyMemory<TNumber> vector, HolographicStorage<TNumber> parent)
         : base(name, vector, parent)
     {
     }
 
-    protected override MemoryPredicate<TNumber> Create(string name, HolographicMemory<TNumber> parent, TNumber[] vec)
+    protected override MemoryPredicate<TNumber> Create(string name, HolographicStorage<TNumber> parent, TNumber[] vec)
     {
         return new MemoryPredicate<TNumber>(name, vec, parent);
     }
@@ -100,12 +103,14 @@ public class MemoryEntity<TNumber>
     : BaseMemoryVector<MemoryEntity<TNumber>, TNumber>
     where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
 {
-    internal MemoryEntity(string name, ReadOnlyMemory<TNumber> vector, HolographicMemory<TNumber> parent)
+    public override MemoryVectorType Type => MemoryVectorType.Entity;
+
+    internal MemoryEntity(string name, ReadOnlyMemory<TNumber> vector, HolographicStorage<TNumber> parent)
         : base(name, vector, parent)
     {
     }
 
-    protected override MemoryEntity<TNumber> Create(string name, HolographicMemory<TNumber> parent, TNumber[] vec)
+    protected override MemoryEntity<TNumber> Create(string name, HolographicStorage<TNumber> parent, TNumber[] vec)
     {
         return new MemoryEntity<TNumber>(name, vec, parent);
     }
@@ -119,13 +124,36 @@ public class MemoryProperty<TNumber>
     : BaseMemoryVector<MemoryProperty<TNumber>, TNumber>
     where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
 {
-    internal MemoryProperty(string name, ReadOnlyMemory<TNumber> vector, HolographicMemory<TNumber> parent)
+    public override MemoryVectorType Type => MemoryVectorType.Property;
+
+    internal MemoryProperty(string name, ReadOnlyMemory<TNumber> vector, HolographicStorage<TNumber> parent)
         : base(name, vector, parent)
     {
     }
 
-    protected override MemoryProperty<TNumber> Create(string name, HolographicMemory<TNumber> parent, TNumber[] vec)
+    protected override MemoryProperty<TNumber> Create(string name, HolographicStorage<TNumber> parent, TNumber[] vec)
     {
         return new MemoryProperty<TNumber>(name, vec, parent);
     }
+}
+
+/// <summary>
+/// The type of a memroy vector
+/// </summary>
+public enum MemoryVectorType
+{
+    /// <summary>
+    /// An entity (e.g. Martin/Pizza)
+    /// </summary>
+    Entity,
+    
+    /// <summary>
+    /// A predicate (e.g. Eats) relating 2 entities
+    /// </summary>
+    Predicate,
+    
+    /// <summary>
+    /// A property (e.g. Male)
+    /// </summary>
+    Property
 }

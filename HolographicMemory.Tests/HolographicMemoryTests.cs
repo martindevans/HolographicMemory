@@ -1,4 +1,5 @@
-﻿using static System.Numerics.Tensors.TensorPrimitives;
+﻿using HolographicMemory.Storage;
+using static System.Numerics.Tensors.TensorPrimitives;
 
 namespace HolographicMemory.Tests
 {
@@ -8,7 +9,7 @@ namespace HolographicMemory.Tests
         // Use a moderate dimension that is large enough for reliable similarity
         // scores but small enough for fast tests.
         private const int Dims = 1024;
-        private const int Seed = 42;
+        private static readonly Guid Id = new Guid(345235, 12, 141, 255, 128, 64, 32, 16, 8, 4, 2);
 
         // Similarity threshold: stored facts should score above this, unrelated
         // facts should score below it.
@@ -21,8 +22,8 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreateSubject_IsDeterministic()
         {
-            var m1 = new HolographicMemory<float>(Dims, Seed);
-            var m2 = new HolographicMemory<float>(Dims, Seed);
+            var m1 = new HolographicStorage<float>(Dims, Id);
+            var m2 = new HolographicStorage<float>(Dims, Id);
 
             var a1 = m1.CreateEntity("Alice");
             var a2 = m2.CreateEntity("Alice");
@@ -33,8 +34,8 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreatePredicate_IsDeterministic()
         {
-            var m1 = new HolographicMemory<float>(Dims, Seed);
-            var m2 = new HolographicMemory<float>(Dims, Seed);
+            var m1 = new HolographicStorage<float>(Dims, Id);
+            var m2 = new HolographicStorage<float>(Dims, Id);
 
             var p1 = m1.CreatePredicate("Likes");
             var p2 = m2.CreatePredicate("Likes");
@@ -45,8 +46,8 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreateObject_IsDeterministic()
         {
-            var m1 = new HolographicMemory<float>(Dims, Seed);
-            var m2 = new HolographicMemory<float>(Dims, Seed);
+            var m1 = new HolographicStorage<float>(Dims, Id);
+            var m2 = new HolographicStorage<float>(Dims, Id);
 
             var o1 = m1.CreateEntity("Pizza");
             var o2 = m2.CreateEntity("Pizza");
@@ -57,8 +58,8 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreateProperty_IsDeterministic()
         {
-            var m1 = new HolographicMemory<float>(Dims, Seed);
-            var m2 = new HolographicMemory<float>(Dims, Seed);
+            var m1 = new HolographicStorage<float>(Dims, Id);
+            var m2 = new HolographicStorage<float>(Dims, Id);
 
             var p1 = m1.CreateProperty("Female");
             var p2 = m2.CreateProperty("Female");
@@ -69,7 +70,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void DifferentNames_ProduceDifferentVectors()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var bob = memory.CreateEntity("Bob");
@@ -84,7 +85,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Query_PredicateObject_ReturnsStoredSubject()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var martin = memory.CreateEntity("Martin");
@@ -106,7 +107,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Query_SubjectPredicate_ReturnsStoredObject()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
@@ -128,7 +129,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Query_SubjectObject_ReturnsStoredPredicate()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
@@ -150,7 +151,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Query_MultipleFacts_AreDiscriminated()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var martin = memory.CreateEntity("Martin");
@@ -183,7 +184,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Store_SubjectProperty_ChangesMemoryVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var female = memory.CreateProperty("Female");
@@ -198,7 +199,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Query_Subject_ReturnsStoredProperty()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var woman = memory.CreateProperty("Woman");
@@ -219,7 +220,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Query_Property_ReturnsMatchingSubject()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var martin = memory.CreateEntity("Martin");
@@ -244,7 +245,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Remove_Triple_DecreasesQuerySimilarity()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var martin = memory.CreateEntity("Martin");
@@ -272,7 +273,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Remove_Property_DecreasesMemoryVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var female = memory.CreateProperty("Female");
@@ -293,7 +294,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Clear_ZeroesMemoryVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
@@ -309,7 +310,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Clear_ZeroesNormalizedMemoryVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
@@ -329,7 +330,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void NormalizedMemoryVector_HasUnitLength()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
@@ -344,7 +345,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void NormalizedMemoryVector_IsConsistentAfterMultipleAccesses()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var alice = memory.CreateEntity("Alice");
             var likes = memory.CreatePredicate("Likes");
@@ -365,7 +366,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Store_WrongDimensions_Throws()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
             var wrongVector = new float[Dims + 1];
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => memory.Store(wrongVector.AsSpan()));
         }
@@ -373,7 +374,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Remove_WrongDimensions_Throws()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
             var wrongVector = new float[Dims - 1];
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => memory.Remove(wrongVector.AsSpan()));
         }
@@ -385,7 +386,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreateSubject_WithExplicitValue_UsesProvidedVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var customVec = new float[Dims];
             customVec[0] = 1f;
@@ -398,7 +399,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreatePredicate_WithExplicitValue_UsesProvidedVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var customVec = new float[Dims];
             customVec[1] = 1f;
@@ -411,7 +412,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreateObject_WithExplicitValue_UsesProvidedVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var customVec = new float[Dims];
             customVec[2] = 1f;
@@ -424,7 +425,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void CreateProperty_WithExplicitValue_UsesProvidedVector()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var customVec = new float[Dims];
             customVec[3] = 1f;
@@ -437,7 +438,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void DeriveSubject_WithFactor_IsMultiplied()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var a = memory.CreateEntity("Test");
             var b = a.Derive("Half", 0.5f);
@@ -453,7 +454,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void DerivePredicate_WithFactor_IsMultiplied()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var a = memory.CreatePredicate("Test");
             var b = a.Derive("Half", 0.5f);
@@ -469,7 +470,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void DeriveObject_WithFactor_IsMultiplied()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var a = memory.CreateEntity("Test");
             var b = a.Derive("Half", 0.5f);
@@ -485,7 +486,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void DeriveProperty_WithFactor_IsMultiplied()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var a = memory.CreateProperty("Test");
             var b = a.Derive("Half", 0.5f);
@@ -501,7 +502,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Subject_Equals()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var a1 = memory.CreateProperty("Test");
             var a2 = memory.CreateProperty("Test");
@@ -520,7 +521,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Subject_InHashset_AddsAndRemoves()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
 
             var a1 = memory.CreateProperty("Test");
             var a2 = memory.CreateProperty("Test");

@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using HolographicMemory.Retrieval;
+using HolographicMemory.Storage;
 using static System.Numerics.Tensors.TensorPrimitives;
 
 namespace HolographicMemory.Tests
@@ -6,27 +9,25 @@ namespace HolographicMemory.Tests
     public sealed class FuzzTests
     {
         // Number of vector dimensions. Larger values give better capacity but are slower.
-        private const int Dims = 1024;
+        private const int Dims = 2048;
 
-        // RNG seed used for both the memory and the fact generator so the test
-        // is fully deterministic.
-        private const int Seed = 7;
+        // ID to use for memory.
+        private static readonly Guid Id = new Guid(345235, 12, 141, 255, 128, 64, 32, 16, 8, 4, 2);
 
         // Pool sizes for the randomly-generated vocabulary.
-        private const int EntityCount = 20;
-        private const int PredicateCount = 5;
-        private const int PropertyCount = 8;
+        private const int EntityCount = 30;
+        private const int PredicateCount = 10;
+        private const int PropertyCount = 16;
 
         // Total number of unique facts to insert across the whole test.
-        private const int TotalTriples = 100;
-        private const int TotalPropertyFacts = 60;
+        private const int TotalTriples = 500;
+        private const int TotalPropertyFacts = 120;
 
         // Print an accuracy snapshot every N inserted facts.
         private const int CheckpointInterval = 10;
 
         // Accuracy threshold applied at the very first checkpoint (10 facts) for triple queries.
-        // With only 10 facts in a 1 024-dimensional memory the retrieval rate
-        // should be high; lower thresholds are expected as capacity fills up.
+        // lower thresholds are expected as capacity fills up.
         private const double FirstCheckpointTripleAccuracyThreshold = 0.70;
 
         // Properties have a smaller vocabulary (PropertyCount) and multiple entities can
@@ -39,8 +40,8 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Fuzz_RandomTriples_PrintsAccuracyStats()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
-            var rng = new Random(Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
+            var rng = new Random(Id.GetHashCode());
 
             // ----------------------------------------------------------------
             // Build a fixed vocabulary of entities and predicates
@@ -142,8 +143,8 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Fuzz_RandomProperties_PrintsAccuracyStats()
         {
-            var memory = new HolographicMemory<float>(Dims, Seed);
-            var rng = new Random(Seed);
+            var memory = new HolographicStorage<float>(Dims, Id);
+            var rng = new Random(Id.GetHashCode());
 
             // ----------------------------------------------------------------
             // Build a fixed vocabulary of entities and properties
@@ -228,6 +229,140 @@ namespace HolographicMemory.Tests
                 firstCheckpointPropertyAccuracy,
                 $"Property retrieval accuracy at {CheckpointInterval} facts ({firstCheckpointPropertyAccuracy:P1}) " +
                 $"should exceed {FirstCheckpointPropertyAccuracyThreshold:P0}");
+        }
+
+        [TestMethod]
+        public void Fuzz_Retrieval()
+        {
+            TestContext.WriteLine("Facts | Subject acc | Object acc | Predicate acc | Milliseconds");
+            TestContext.WriteLine("------+-------------+------------+---------------+-------------");
+
+            Fuzz_Retrieval_Single(10);
+            Fuzz_Retrieval_Single(100);
+            Fuzz_Retrieval_Single(200);
+            Fuzz_Retrieval_Single(300);
+        }
+
+        private void Fuzz_Retrieval_Single(int factCount)
+        {
+            var memory = new HolographicStorage<float>(Dims, Id);
+            var rng = new Random(unchecked(Id.GetHashCode() * factCount));
+
+            // ----------------------------------------------------------------
+            // Build a fixed vocabulary of entities and predicates
+            // ----------------------------------------------------------------
+            var entities = Enumerable.Range(0, EntityCount)
+                                     .Select(i => memory.CreateEntity($"Entity_{i}"))
+                                     .ToArray();
+
+            var predicates = Enumerable.Range(0, PredicateCount)
+                                       .Select(i => memory.CreatePredicate($"Pred_{i}"))
+                                       .ToArray();
+
+            // ----------------------------------------------------------------
+            // Generate unique (subject, predicate, object) triples
+            // ----------------------------------------------------------------
+            var facts = new List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)>();
+            var seen = new HashSet<(int, int, int)>();
+
+            while (facts.Count < factCount)
+            {
+                var si = rng.Next(EntityCount);
+                var pi = rng.Next(PredicateCount);
+                var oi = rng.Next(EntityCount);
+
+                // Exclude reflexive triples and exact duplicates
+                if (si == oi || !seen.Add((si, pi, oi)))
+                    continue;
+
+                // Generate facts and insert into memory
+                var (s, p, o) = (entities[si], predicates[pi], entities[oi]);
+                facts.Add((s, p, o));
+                memory.Store(s, p, o);
+            }
+
+            // ----------------------------------------------------------------
+            // Now test retrieval
+            // ----------------------------------------------------------------
+
+            var retrieval = new HolographicRetrieval<float>(new TestVectorStorage(facts));
+
+            var timer = new Stopwatch();
+            timer.Start();
+            
+            var queryBuffer = new float[Dims];
+            float subjectHits = 0;
+            float objectHits = 0;
+            float predicateHits = 0;
+            foreach (var (fs, fp, fo) in facts)
+            {
+                // Who is the subject? (query with predicate + object)
+                memory.QuerySubjects(fp, fo, queryBuffer);
+
+                // Retrieve some results, take the correct answer if it's there
+                var subjectResults = retrieval.Retrieve(memory.Id, MemoryVectorType.Entity, queryBuffer, 4).ToArray();
+                var subjectResult = subjectResults.FirstOrDefault(a => a.Vector.VectorId == fs.Name);
+                subjectHits += Convert.ToInt32(subjectResult != default);
+
+                // What is the object? (query with subject + predicate)
+                memory.QueryObjects(fs, fp, queryBuffer);
+
+                // Retrieve some results, take the correct answer if it's there
+                var objectResults = retrieval.Retrieve(memory.Id, MemoryVectorType.Entity, queryBuffer, 4).ToArray();
+                var objectResult = objectResults.SingleOrDefault(a => a.Vector.VectorId == fo.Name);
+                objectHits += Convert.ToInt32(objectResult != default);
+
+                // What is the predicate? (query with subject + object)
+                memory.QueryPredicates(fs, fo, queryBuffer);
+
+                // Retrieve some results, take the correct answer if it's there
+                var predicateResults = retrieval.Retrieve(memory.Id, MemoryVectorType.Predicate, queryBuffer, 4).ToArray();
+                var predicateResult = predicateResults.FirstOrDefault(a => a.Vector.VectorId == fp.Name);
+                predicateHits += Convert.ToInt32(predicateResult != default);
+            }
+
+            var subjectAcc = (double)subjectHits / facts.Count;
+            var objectAcc = (double)objectHits / facts.Count;
+            var predicateAcc = (double)predicateHits / facts.Count;
+            var elapsed = timer.Elapsed;
+
+            TestContext.WriteLine(
+                $"{facts.Count,5} | {subjectAcc,10:P1} | {objectAcc,9:P1} | {predicateAcc,12:P1} | {elapsed.TotalMilliseconds}ms");
+        }
+    }
+
+    internal class TestVectorStorage
+        : IVectorStorage<float>
+    {
+        private readonly List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)> _facts;
+
+        public TestVectorStorage(List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)> facts)
+        {
+            _facts = facts;
+        }
+
+        public IEnumerable<(float Similarity, RetrievalVector<float> Vector)> Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> query, int max)
+        {
+            return (
+                from triple in _facts.AsParallel()
+                from item in new[] { Filter(triple.S), Filter(triple.P), Filter(triple.O) }
+                orderby item.Item1 descending
+                select item
+            ).Take(max);
+
+            (float, RetrievalVector<float>) Filter<TVector>(TVector vector) where TVector : BaseMemoryVector<TVector, float>
+            {
+                var sim = CosineSimilarity(vector.Vector.Span, query.Span);
+                return (
+                    sim,
+                    new RetrievalVector<float>(memory, vector.Name, vector.Type, vector.Vector)
+                );
+            }
+        }
+
+        public (float Similarity, RetrievalVector<float> Vector)? Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> vector)
+        {
+            return Search(memory, type, vector, 1).SingleOrDefault();
         }
     }
 }

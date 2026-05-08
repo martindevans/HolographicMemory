@@ -1,22 +1,39 @@
 ﻿using FftFlat;
 using HolographicMemory.Exceptions;
+using HolographicMemory.Extensions;
 using System.Numerics;
-using static HolographicMemory.HRR;
+using static HolographicMemory.Storage.HRR;
 using static System.Numerics.Tensors.TensorPrimitives;
 
-namespace HolographicMemory;
+namespace HolographicMemory.Storage;
 
-public class HolographicMemory<TNumber>
+public class HolographicStorage<TNumber>
     where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
 {
-    public int Dimensions { get; }
     private readonly int _seed;
+    private readonly FastFourierTransform _fft;
+    
+    /// <summary>
+    /// The number of dimensions for vectors in this memory
+    /// </summary>
+    public int Dimensions { get; }
+
+    /// <summary>
+    /// Unique ID of this memory
+    /// </summary>
+    public Guid Id { get; }
 
     private readonly TNumber[] _memoryVector;
+    /// <summary>
+    /// The raw (non normalised) memory vector
+    /// </summary>
     public ReadOnlySpan<TNumber> MemoryVector => _memoryVector;
 
     private readonly TNumber[] _normalizedMemory;
     private bool _requiresNormalization;
+    /// <summary>
+    /// The normalised memory vector
+    /// </summary>
     public ReadOnlySpan<TNumber> NormalizedMemoryVector
     {
         get
@@ -30,17 +47,16 @@ public class HolographicMemory<TNumber>
         }
     }
 
-    private readonly FastFourierTransform _fft;
-
-    public HolographicMemory(int dimensions, int seed)
+    public HolographicStorage(int dimensions, Guid id)
     {
         Dimensions = dimensions;
-        _seed = seed;
-
+        Id = id;
+        
         _memoryVector = new TNumber[Dimensions];
         _normalizedMemory = new TNumber[Dimensions];
         _requiresNormalization = true;
 
+        _seed = id.GetHashCode();
         _fft = new FastFourierTransform(Dimensions);
     }
 
