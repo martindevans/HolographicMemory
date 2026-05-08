@@ -14,7 +14,7 @@ public class HolographicRetrieval<TNumber>
     public int SearchProbes { get; set; } = 5;
 
     /// <summary>
-    /// Once a single result has been returned, searching for subsequent results will terminat once similarity
+    /// Once a single result has been returned, searching for subsequent results will terminate once similarity
     /// is below this factor of the initial result (like Top-P).
     /// </summary>
     public float QualityFactor
