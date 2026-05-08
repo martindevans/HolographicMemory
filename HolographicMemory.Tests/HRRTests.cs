@@ -146,12 +146,11 @@ public sealed class HRRTests
         var bound = new float[Dimensions];
         var recovered = new float[Dimensions];
 
-        HRR.Bind(fft, (ReadOnlySpan<float>)a, (ReadOnlySpan<float>)b, bound);
-        HRR.Unbind(fft, (ReadOnlySpan<float>)bound, (ReadOnlySpan<float>)a, recovered);
+        HRR.Bind(fft, a, b, bound);
+        HRR.Unbind(fft, bound, a, recovered);
 
         var similarity = Similarity(recovered, b);
-        Assert.IsGreaterThanOrEqualTo(SimilarityThreshold, similarity,
-            $"Expected similarity >= {SimilarityThreshold} but got {similarity:F4}");
+        Assert.IsGreaterThanOrEqualTo(SimilarityThreshold, similarity, $"Expected similarity >= {SimilarityThreshold} but got {similarity:F4}");
     }
 
     [TestMethod]
@@ -163,8 +162,8 @@ public sealed class HRRTests
         var bound = new float[Dimensions];
         var recovered = new float[Dimensions];
 
-        HRR.Bind(fft, (ReadOnlySpan<float>)a, (ReadOnlySpan<float>)b, bound);
-        HRR.Unbind(fft, (ReadOnlySpan<float>)bound, (ReadOnlySpan<float>)b, recovered);
+        HRR.Bind(fft, a, b, bound);
+        HRR.Unbind(fft, bound, b, recovered);
 
         var similarity = Similarity(recovered, a);
         Assert.IsGreaterThanOrEqualTo(SimilarityThreshold, similarity,
@@ -181,8 +180,8 @@ public sealed class HRRTests
         var bound = new float[Dimensions];
         var recovered = new float[Dimensions];
 
-        HRR.Bind(fft, (ReadOnlySpan<float>)a, (ReadOnlySpan<float>)b, bound);
-        HRR.Unbind(fft, (ReadOnlySpan<float>)bound, (ReadOnlySpan<float>)wrongKey, recovered);
+        HRR.Bind(fft, a, b, bound);
+        HRR.Unbind(fft, bound, wrongKey, recovered);
 
         var similarity = Math.Abs(Similarity(recovered, b));
         Assert.IsLessThan(SimilarityThreshold, similarity,
@@ -198,8 +197,8 @@ public sealed class HRRTests
         var bound = new float[Dimensions];
         var recovered = new float[Dimensions];
 
-        HRR.Bind(fft, (ReadOnlySpan<float>)a, (ReadOnlySpan<float>)b, bound);
-        HRR.Unbind(fft, (ReadOnlySpan<float>)bound, (ReadOnlySpan<float>)a, recovered);
+        HRR.Bind(fft, a, b, bound);
+        HRR.Unbind(fft, bound, a, recovered);
 
         Assert.AreEqual(1.0, L2Norm(recovered), ToleranceLoose);
     }

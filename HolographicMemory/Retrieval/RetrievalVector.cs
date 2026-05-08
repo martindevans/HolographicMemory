@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using HolographicMemory.Storage;
+﻿using HolographicMemory.Storage;
 
 namespace HolographicMemory.Retrieval;
 
@@ -7,8 +6,7 @@ namespace HolographicMemory.Retrieval;
 /// A vector retrieved from vector DB search
 /// </summary>
 /// <typeparam name="TNumber"></typeparam>
-public record RetrievalVector<TNumber>
-    where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
+public record RetrievalVector
 {
     /// <summary>
     /// The ID of the memory this vector belongs to
@@ -28,9 +26,9 @@ public record RetrievalVector<TNumber>
     /// <summary>
     /// The raw vector value
     /// </summary>
-    public ReadOnlyMemory<TNumber> Value { get; }
+    public ReadOnlyMemory<float> Value { get; }
 
-    public RetrievalVector(Guid memoryId, string vectorId, MemoryVectorType type, ReadOnlyMemory<TNumber> value)
+    public RetrievalVector(Guid memoryId, string vectorId, MemoryVectorType type, ReadOnlyMemory<float> value)
     {
         MemoryId = memoryId;
         VectorId = vectorId;

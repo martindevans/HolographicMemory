@@ -1,10 +1,8 @@
-﻿using System.Numerics;
-using HolographicMemory.Storage;
+﻿using HolographicMemory.Storage;
 
 namespace HolographicMemory.Retrieval;
 
-public interface IVectorStorage<TNumber>
-    where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
+public interface IVectorStorage
 {
     /// <summary>
     /// Search vector storage for the nearest vectors to a supplied vector. In order of similarity descending.
@@ -14,7 +12,7 @@ public interface IVectorStorage<TNumber>
     /// <param name="vector"></param>
     /// <param name="max"></param>
     /// <returns></returns>
-    IEnumerable<(float Similarity, RetrievalVector<TNumber> Vector)> Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<TNumber> vector, int max);
+    IEnumerable<(float Similarity, RetrievalVector Vector)> Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> vector, int max);
 
     /// <summary>
     /// Search vector storage for the single nearest vector to a supplied vector.
@@ -23,5 +21,5 @@ public interface IVectorStorage<TNumber>
     /// <param name="type"></param>
     /// <param name="vector"></param>
     /// <returns></returns>
-    (float Similarity, RetrievalVector<TNumber> Vector)? Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<TNumber> vector);
+    (float Similarity, RetrievalVector Vector)? Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> vector);
 }

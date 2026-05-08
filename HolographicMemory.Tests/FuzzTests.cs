@@ -12,7 +12,7 @@ namespace HolographicMemory.Tests
         private const int Dims = 2048;
 
         // ID to use for memory.
-        private static readonly Guid Id = new Guid(345235, 12, 141, 255, 128, 64, 32, 16, 8, 4, 2);
+        private static readonly Guid Id = new(345235, 12, 141, 255, 128, 64, 32, 16, 8, 4, 2);
 
         // Pool sizes for the randomly-generated vocabulary.
         private const int EntityCount = 30;
@@ -40,7 +40,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Fuzz_RandomTriples_PrintsAccuracyStats()
         {
-            var memory = new HolographicStorage<float>(Dims, Id);
+            var memory = new HolographicStorage(Dims, Id);
             var rng = new Random(Id.GetHashCode());
 
             // ----------------------------------------------------------------
@@ -57,7 +57,7 @@ namespace HolographicMemory.Tests
             // ----------------------------------------------------------------
             // Generate unique (subject, predicate, object) triples
             // ----------------------------------------------------------------
-            var facts = new List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)>();
+            var facts = new List<(MemoryEntity S, MemoryPredicate P, MemoryEntity O)>();
             var seen = new HashSet<(int, int, int)>();
 
             while (facts.Count < TotalTriples)
@@ -143,7 +143,7 @@ namespace HolographicMemory.Tests
         [TestMethod]
         public void Fuzz_RandomProperties_PrintsAccuracyStats()
         {
-            var memory = new HolographicStorage<float>(Dims, Id);
+            var memory = new HolographicStorage(Dims, Id);
             var rng = new Random(Id.GetHashCode());
 
             // ----------------------------------------------------------------
@@ -160,7 +160,7 @@ namespace HolographicMemory.Tests
             // ----------------------------------------------------------------
             // Generate unique (subject, property) pairs
             // ----------------------------------------------------------------
-            var facts = new List<(MemoryEntity<float> S, MemoryProperty<float> P)>();
+            var facts = new List<(MemoryEntity S, MemoryProperty P)>();
             var seen = new HashSet<(int, int)>();
 
             while (facts.Count < TotalPropertyFacts)
@@ -246,7 +246,7 @@ namespace HolographicMemory.Tests
 
         private void Fuzz_Retrieval_Single(int factCount)
         {
-            var memory = new HolographicStorage<float>(Dims, Id);
+            var memory = new HolographicStorage(Dims, Id);
             var rng = new Random(unchecked(Id.GetHashCode() * factCount));
 
             // ----------------------------------------------------------------
@@ -263,7 +263,7 @@ namespace HolographicMemory.Tests
             // ----------------------------------------------------------------
             // Generate unique (subject, predicate, object) triples
             // ----------------------------------------------------------------
-            var facts = new List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)>();
+            var facts = new List<(MemoryEntity S, MemoryPredicate P, MemoryEntity O)>();
             var seen = new HashSet<(int, int, int)>();
 
             while (facts.Count < factCount)
@@ -286,7 +286,7 @@ namespace HolographicMemory.Tests
             // Now test retrieval
             // ----------------------------------------------------------------
 
-            var retrieval = new HolographicRetrieval<float>(new TestVectorStorage(facts));
+            var retrieval = new HolographicRetrieval(new TestVectorStorage(facts));
 
             var timer = new Stopwatch();
             timer.Start();
@@ -333,16 +333,16 @@ namespace HolographicMemory.Tests
     }
 
     internal class TestVectorStorage
-        : IVectorStorage<float>
+        : IVectorStorage
     {
-        private readonly List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)> _facts;
+        private readonly List<(MemoryEntity S, MemoryPredicate P, MemoryEntity O)> _facts;
 
-        public TestVectorStorage(List<(MemoryEntity<float> S, MemoryPredicate<float> P, MemoryEntity<float> O)> facts)
+        public TestVectorStorage(List<(MemoryEntity S, MemoryPredicate P, MemoryEntity O)> facts)
         {
             _facts = facts;
         }
 
-        public IEnumerable<(float Similarity, RetrievalVector<float> Vector)> Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> query, int max)
+        public IEnumerable<(float Similarity, RetrievalVector Vector)> Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> query, int max)
         {
             return (
                 from triple in _facts.AsParallel()
@@ -352,20 +352,21 @@ namespace HolographicMemory.Tests
                 select item
             ).Take(max);
 
-            (float, RetrievalVector<float>) Filter<TVector>(TVector vector) where TVector : BaseMemoryVector<TVector, float>
+            (float, RetrievalVector) Filter<TVector>(TVector vector)
+                where TVector : BaseMemoryVector<TVector>
             {
                 if (vector.Type != type)
                     return default;
-                
-                var sim = CosineSimilarity(vector.Vector.Span, query.Span);
+
+                var sim = float.CreateSaturating(CosineSimilarity(vector.Vector.Span, query.Span));
                 return (
                     sim,
-                    new RetrievalVector<float>(memory, vector.Name, vector.Type, vector.Vector)
+                    new RetrievalVector(memory, vector.Name, vector.Type, vector.Vector)
                 );
             }
         }
 
-        public (float Similarity, RetrievalVector<float> Vector)? Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> vector)
+        public (float Similarity, RetrievalVector Vector)? Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> vector)
         {
             using var results = Search(memory, type, vector, 1).GetEnumerator();
             if (!results.MoveNext())

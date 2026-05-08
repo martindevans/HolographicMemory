@@ -1,12 +1,10 @@
-﻿using System.Numerics;
-using HolographicMemory.Extensions;
+﻿using HolographicMemory.Extensions;
 using HolographicMemory.Storage;
 using static System.Numerics.Tensors.TensorPrimitives;
 
 namespace HolographicMemory.Retrieval;
 
-public class HolographicRetrieval<TNumber>
-    where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>, IFloatingPointIeee754<TNumber>
+public class HolographicRetrieval
 {
     /// <summary>
     /// How many vectors to probe when trying to find the next best
@@ -23,22 +21,21 @@ public class HolographicRetrieval<TNumber>
         set => field = Math.Clamp(value, 0, 1);
     } = 0.5f;
 
+    private readonly IVectorStorage _storage;
 
-    private readonly IVectorStorage<TNumber> _storage;
-
-    public HolographicRetrieval(IVectorStorage<TNumber> storage)
+    public HolographicRetrieval(IVectorStorage storage)
     {
         _storage = storage;
     }
     
-    public IEnumerable<(float Similarity, RetrievalVector<TNumber> Vector)> Retrieve(Guid memory, MemoryVectorType type, ReadOnlyMemory<TNumber> query, int max)
+    public IEnumerable<(float Similarity, RetrievalVector Vector)> Retrieve(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> query, int max)
     {
         if (max <= 0)
             yield break;
         
         // Copy search vector to some memory we can mutate
-        using var residualVector = Borrow<TNumber>.Get(query.Length);
-        using var normalisedResidual = Borrow<TNumber>.Get(query.Length);
+        using var residualVector = Borrow<float>.Get(query.Length);
+        using var normalisedResidual = Borrow<float>.Get(query.Length);
         query.Span.CopyTo(residualVector.Span);
 
         // Keep track of everything yielded so far
@@ -67,7 +64,7 @@ public class HolographicRetrieval<TNumber>
             
             // Normalise the residual for querying
             var norm = Norm(residualVector.Span);
-            if (norm < TNumber.CreateSaturating(0.01f) || norm <= TNumber.Epsilon)
+            if (norm is < 0.01f or <= float.Epsilon)
                 yield break;
             Divide(residualVector, norm, normalisedResidual);
             
@@ -92,7 +89,7 @@ public class HolographicRetrieval<TNumber>
             RemoveVectorInfluence(residualVector.Span, nextBest.Vector.Value.Span);
         }
 
-        static void RemoveVectorInfluence(Span<TNumber> value, ReadOnlySpan<TNumber> subtracted)
+        static void RemoveVectorInfluence(Span<float> value, ReadOnlySpan<float> subtracted)
         {
             // Remove influence of "subtracted" projected along "value". i.e.
             // value -= Dot(value, subtracted) * subtracted;

@@ -7,8 +7,7 @@ using static System.Numerics.Tensors.TensorPrimitives;
 
 namespace HolographicMemory.Storage;
 
-public class HolographicStorage<TNumber>
-    where TNumber : struct, INumber<TNumber>, IRootFunctions<TNumber>
+public class HolographicStorage
 {
     private readonly int _seed;
     private readonly FastFourierTransform _fft;
@@ -23,27 +22,32 @@ public class HolographicStorage<TNumber>
     /// </summary>
     public Guid Id { get; }
 
-    private readonly TNumber[] _memoryVector;
+    private readonly float[] _memoryVector;
     /// <summary>
     /// The raw (non normalised) memory vector
     /// </summary>
-    public ReadOnlySpan<TNumber> MemoryVector => _memoryVector;
+    public ReadOnlySpan<float> MemoryVector => _memoryVector;
 
-    private readonly TNumber[] _normalizedMemory;
-    private bool _requiresNormalization;
+    private readonly Complex[] _fftNormalizedMemory;
+    private bool _requiresFft;
     /// <summary>
-    /// The normalised memory vector
+    /// The FFT of the normalised memory vector
     /// </summary>
-    public ReadOnlySpan<TNumber> NormalizedMemoryVector
+    public ReadOnlySpan<Complex> FftNormalizedMemoryVector
     {
         get
         {
-            if (_requiresNormalization)
+            if (_requiresFft)
             {
-                Normalize(_memoryVector, _normalizedMemory);
-                _requiresNormalization = false;
+                // Normalize memory
+                using var normalized = Borrow<float>.Get(_memoryVector.Length);
+                Normalize(_memoryVector, normalized);
+                
+                // Calculate FFT of normalised memory
+                FFT(_fft, normalized.Span, _fftNormalizedMemory);
+                _requiresFft = false;
             }
-            return _normalizedMemory;
+            return _fftNormalizedMemory;
         }
     }
 
@@ -52,16 +56,16 @@ public class HolographicStorage<TNumber>
         Dimensions = dimensions;
         Id = id;
         
-        _memoryVector = new TNumber[Dimensions];
-        _normalizedMemory = new TNumber[Dimensions];
-        _requiresNormalization = true;
+        _memoryVector = new float[Dimensions];
+        _fftNormalizedMemory = new Complex[Dimensions];
+        _requiresFft = true;
 
         _seed = id.GetHashCode();
         _fft = new FastFourierTransform(Dimensions);
     }
 
     #region Create
-    private ReadOnlyMemory<TNumber> GenerateVector(string name, string type)
+    private ReadOnlyMemory<float> GenerateVector(string name, string type)
     {
         // Combine elements into seed
         var seed = HashCode.Combine(_seed, Dimensions);
@@ -74,13 +78,13 @@ public class HolographicStorage<TNumber>
         var rng = new Random(seed);
 
         // Random [0, 1] numbers
-        var arr = new TNumber[Dimensions];
+        var arr = new float[Dimensions];
         for (var i = 0; i < arr.Length; i++)
-            arr[i] = TNumber.CreateChecked(rng.NextSingle());
+            arr[i] = float.CreateChecked(rng.NextSingle());
 
         // Convert from [0, 1] to [-1, 1]
-        Multiply(arr, TNumber.CreateChecked(2f), arr);
-        Subtract(arr, TNumber.CreateChecked(1f), arr);
+        Multiply(arr, float.CreateChecked(2f), arr);
+        Subtract(arr, float.CreateChecked(1f), arr);
 
         // Normalise length
         Normalize(arr, arr);
@@ -93,15 +97,17 @@ public class HolographicStorage<TNumber>
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public MemoryEntity<TNumber> CreateEntity(string name)
+    public MemoryEntity CreateEntity(string name)
     {
-        return new MemoryEntity<TNumber>(name, GenerateVector(name, "ENTITY"), this);
+        var vec = GenerateVector(name, "ENTITY");
+        var fftVec = Fft(vec.Span);
+        return new MemoryEntity(name, vec, fftVec, this);
     }
 
-    public MemoryEntity<TNumber> CreateEntity(string name, ReadOnlySpan<TNumber> value)
+    public MemoryEntity CreateEntity(string name, ReadOnlySpan<float> value)
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
-        return new MemoryEntity<TNumber>(name, value.ToArray(), this);
+        return new MemoryEntity(name, value.ToArray(), Fft(value), this);
     }
 
     /// <summary>
@@ -109,15 +115,17 @@ public class HolographicStorage<TNumber>
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public MemoryPredicate<TNumber> CreatePredicate(string name)
+    public MemoryPredicate CreatePredicate(string name)
     {
-        return new MemoryPredicate<TNumber>(name, GenerateVector(name, "PREDICATE"), this);
+        var vec = GenerateVector(name, "PREDICATE");
+        var fftVec = Fft(vec.Span);
+        return new MemoryPredicate(name, vec, fftVec, this);
     }
 
-    public MemoryPredicate<TNumber> CreatePredicate(string name, ReadOnlySpan<TNumber> value)
+    public MemoryPredicate CreatePredicate(string name, ReadOnlySpan<float> value)
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
-        return new MemoryPredicate<TNumber>(name, value.ToArray(), this);
+        return new MemoryPredicate(name, value.ToArray(), Fft(value), this);
     }
 
     /// <summary>
@@ -125,85 +133,99 @@ public class HolographicStorage<TNumber>
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    public MemoryProperty<TNumber> CreateProperty(string name)
+    public MemoryProperty CreateProperty(string name)
     {
-        return new MemoryProperty<TNumber>(name, GenerateVector(name, "PROPERTY"), this);
+        var vec = GenerateVector(name, "PROPERTY");
+        var fftVec = Fft(vec.Span);
+        return new MemoryProperty(name, vec, fftVec, this);
     }
 
-    public MemoryProperty<TNumber> CreateProperty(string name, ReadOnlySpan<TNumber> value)
+    public MemoryProperty CreateProperty(string name, ReadOnlySpan<float> value)
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
-        return new MemoryProperty<TNumber>(name, value.ToArray(), this);
+        return new MemoryProperty(name, value.ToArray(), Fft(value), this);
+    }
+
+    public MemoryProperty CreateProperty(string name, ReadOnlySpan<float> value, ReadOnlySpan<Complex> fftVal)
+    {
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, value.Length, nameof(value));
+        ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, fftVal.Length, nameof(fftVal));
+        
+        return new MemoryProperty(name, value.ToArray(), fftVal.ToArray(), this);
     }
     #endregion
 
     #region Store
-    public void Store(Span<TNumber> vector)
+    public void Store(Span<float> vector)
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, vector.Length, nameof(vector));
 
-        Add(_memoryVector, vector, _memoryVector);
-        _requiresNormalization = true;
+        for (var i = 0; i < _memoryVector.Length; i++)
+            _memoryVector[i] += (float)vector[i];
+
+        _requiresFft = true;
     }
     
-    public void Store(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj)
+    public void Store(MemoryEntity subject, MemoryPredicate predicate, MemoryEntity obj)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
         VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
         VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
-        using var bc = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
+        using var bc = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, predicate.FftVector.Span, obj.FftVector.Span, bc);
 
-        using var abc = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, subject.Vector.Span, bc, abc);
+        using var abc = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, subject.FftVector.Span, bc, abc);
 
         Store(abc);
     }
 
-    public void Store(MemoryEntity<TNumber> subject, MemoryProperty<TNumber> property)
+    public void Store(MemoryEntity subject, MemoryProperty property)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
         VectorMismatchException.CheckAndThrow(property, this, nameof(property));
 
-        using var ab = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
+        using var ab = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, subject.FftVector.Span, property.FftVector.Span, ab);
         
         Store(ab);
     }
     #endregion
 
     #region Remove
-    public void Remove(Span<TNumber> vector)
+    public void Remove(Span<float> vector)
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, vector.Length, nameof(vector));
 
-        Subtract(_memoryVector, vector, _memoryVector);
-        _requiresNormalization = true;
+        for (var i = 0; i < _memoryVector.Length; i++)
+            _memoryVector[i] -= (float)vector[i];
+
+        _requiresFft = true;
     }
 
-    public void Remove(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj)
+    public void Remove(MemoryEntity subject, MemoryPredicate predicate, MemoryEntity obj)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
         VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
         VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
-        using var bc = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, predicate.Vector.Span, obj.Vector.Span, bc);
+        using var bc = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, predicate.FftVector.Span, obj.FftVector.Span, bc);
 
-        using var abc = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, subject.Vector.Span, bc, abc);
+        using var abc = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, subject.FftVector.Span, bc, abc);
         
         Remove(abc);
     }
 
-    public void Remove(MemoryEntity<TNumber> subject, MemoryProperty<TNumber> property)
+    public void Remove(MemoryEntity subject, MemoryProperty property)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
         VectorMismatchException.CheckAndThrow(property, this, nameof(property));
 
-        using var ab = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, subject.Vector.Span, property.Vector.Span, ab);
+        using var ab = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, subject.FftVector.Span, property.FftVector.Span, ab);
 
         Remove(ab);
     }
@@ -216,20 +238,22 @@ public class HolographicStorage<TNumber>
     public void Clear()
     {
         Array.Clear(_memoryVector);
-        Array.Clear(_normalizedMemory);
-        _requiresNormalization = false;
+        Array.Clear(_fftNormalizedMemory);
+        _requiresFft = false;
     }
 
     /// <summary>
     /// Overwrite this memory with a raw vector value
     /// </summary>
     /// <param name="vector"></param>
-    public void Set(ReadOnlySpan<TNumber> vector)
+    public void Set(ReadOnlySpan<float> vector)
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, vector.Length, nameof(vector));
+
+        for (var i = 0; i < _memoryVector.Length; i++)
+            _memoryVector[i] = (float)vector[i];
         
-        vector.CopyTo(_memoryVector);
-        _requiresNormalization = true;
+        _requiresFft = true;
     }
     #endregion
 
@@ -240,17 +264,17 @@ public class HolographicStorage<TNumber>
     /// <param name="predicate">Predicate part of the query key.</param>
     /// <param name="obj">Object part of the query key.</param>
     /// <param name="output">Output span that receives the recovered subject-like vector.</param>
-    public void QuerySubjects(MemoryPredicate<TNumber> predicate, MemoryEntity<TNumber> obj, Span<TNumber> output)
+    public void QuerySubjects(MemoryPredicate predicate, MemoryEntity obj, Span<float> output)
     {
         VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
         VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
         // Calculate query vector
-        using var key = Borrow<TNumber>.Get(Dimensions);
-        Bind(_fft, predicate.Vector.Span, obj.Vector.Span, key);
+        using var key = Borrow<float>.Get(Dimensions);
+        Bind<float>(_fft, predicate.FftVector.Span, obj.FftVector.Span, key);
 
         // Unbind from memory
-        Unbind(_fft, NormalizedMemoryVector, key, output);
+        Unbind<float, float>(_fft, FftNormalizedMemoryVector, key, output);
     }
 
     /// <summary>
@@ -259,15 +283,15 @@ public class HolographicStorage<TNumber>
     /// <param name="subject">Subject part of the query key.</param>
     /// <param name="predicate">Predicate part of the query key.</param>
     /// <param name="output">Output span that receives the recovered object-like vector.</param>
-    public void QueryObjects(MemoryEntity<TNumber> subject, MemoryPredicate<TNumber> predicate, Span<TNumber> output)
+    public void QueryObjects(MemoryEntity subject, MemoryPredicate predicate, Span<float> output)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
         VectorMismatchException.CheckAndThrow(predicate, this, nameof(predicate));
 
-        using var x = Borrow<TNumber>.Get(Dimensions);
-        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
+        using var x = Borrow<float>.Get(Dimensions);
+        Unbind<float>(_fft, FftNormalizedMemoryVector, subject.FftVector.Span, x);
 
-        Unbind(_fft, x, predicate.Vector.Span, output);
+        Unbind(_fft, x, predicate.FftVector.Span, output);
     }
 
     /// <summary>
@@ -276,15 +300,15 @@ public class HolographicStorage<TNumber>
     /// <param name="subject">Subject part of the query key.</param>
     /// <param name="obj">Object part of the query key.</param>
     /// <param name="output">Output span that receives the recovered predicate-like vector.</param>
-    public void QueryPredicates(MemoryEntity<TNumber> subject, MemoryEntity<TNumber> obj, Span<TNumber> output)
+    public void QueryPredicates(MemoryEntity subject, MemoryEntity obj, Span<float> output)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
         VectorMismatchException.CheckAndThrow(obj, this, nameof(obj));
 
-        using var x = Borrow<TNumber>.Get(Dimensions);
-        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, x);
+        using var x = Borrow<float>.Get(Dimensions);
+        Unbind<float>(_fft, FftNormalizedMemoryVector, subject.FftVector.Span, x);
 
-        Unbind(_fft, x, obj.Vector.Span, output);
+        Unbind(_fft, x, obj.FftVector.Span, output);
     }
 
     /// <summary>
@@ -292,11 +316,11 @@ public class HolographicStorage<TNumber>
     /// </summary>
     /// <param name="subject">Subject part of the query key.</param>
     /// <param name="output">Output span that receives the recovered property-like vector.</param>
-    public void QueryProperties(MemoryEntity<TNumber> subject, Span<TNumber> output)
+    public void QueryProperties(MemoryEntity subject, Span<float> output)
     {
         VectorMismatchException.CheckAndThrow(subject, this, nameof(subject));
 
-        Unbind(_fft, NormalizedMemoryVector, subject.Vector.Span, output);
+        Unbind(_fft, FftNormalizedMemoryVector, subject.FftVector.Span, output);
     }
 
     /// <summary>
@@ -304,11 +328,18 @@ public class HolographicStorage<TNumber>
     /// </summary>
     /// <param name="property">Property part of the query key.</param>
     /// <param name="output">Output span that receives the recovered subject-like vector.</param>
-    public void QuerySubjects(MemoryProperty<TNumber> property, Span<TNumber> output)
+    public void QuerySubjects(MemoryProperty property, Span<float> output)
     {
         VectorMismatchException.CheckAndThrow(property, this, nameof(property));
 
-        Unbind(_fft, NormalizedMemoryVector, property.Vector.Span, output);
+        Unbind(_fft, FftNormalizedMemoryVector, property.FftVector.Span, output);
     }
     #endregion
+
+    internal ReadOnlyMemory<Complex> Fft(ReadOnlySpan<float> vector)
+    {
+        var output = new Complex[vector.Length];
+        FFT(_fft, vector, output.AsSpan());
+        return output;
+    }
 }
