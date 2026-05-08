@@ -1,7 +1,7 @@
-﻿using HolographicMemory;
+﻿using HolographicMemory.Storage;
 using static System.Numerics.Tensors.TensorPrimitives;
 
-var memory = new HolographicMemory<float>(dimensions:8192, seed:13);
+var memory = new HolographicStorage<float>(dimensions:8192, Guid.NewGuid());
 
 // People
 var Martin = memory.CreateEntity("Martin");
