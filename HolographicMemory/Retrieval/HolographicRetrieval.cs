@@ -37,8 +37,8 @@ public class HolographicRetrieval<TNumber>
             yield break;
         
         // Copy search vector to some memory we can mutate
-        var residualVector = Borrow<TNumber>.Get(query.Length);
-        var normalisedResidual = Borrow<TNumber>.Get(query.Length);
+        using var residualVector = Borrow<TNumber>.Get(query.Length);
+        using var normalisedResidual = Borrow<TNumber>.Get(query.Length);
         query.Span.CopyTo(residualVector.Span);
 
         // Keep track of everything yielded so far
@@ -66,7 +66,10 @@ public class HolographicRetrieval<TNumber>
             max--;
             
             // Normalise the residual for querying
-            Divide(residualVector, Norm(residualVector.Span), normalisedResidual);
+            var norm = Norm(residualVector.Span);
+            if (norm < TNumber.CreateSaturating(0.01f) || norm <= TNumber.Epsilon)
+                yield break;
+            Divide(residualVector, norm, normalisedResidual);
             
             // Find the next best vectors. if they've all been yielded already exit now.
             var nextBest = _storage
@@ -77,7 +80,7 @@ public class HolographicRetrieval<TNumber>
             if (nextBest == default)
                 break;
 
-            // Stop yielding when resilts are junk
+            // Stop yielding when results are junk
             if (nextBest.Similarity < QualityFactor * best0.Similarity)
                 break;
 
@@ -94,7 +97,7 @@ public class HolographicRetrieval<TNumber>
             // Remove influence of "subtracted" projected along "value". i.e.
             // value -= Dot(value, subtracted) * subtracted;
 
-            var scale = Dot(value, subtracted);
+            var scale = Dot(value, subtracted) / Dot(subtracted, subtracted);
             FusedMultiplyAdd(subtracted, -scale, value, value);
         }
     }

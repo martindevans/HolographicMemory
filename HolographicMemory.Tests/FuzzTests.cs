@@ -347,12 +347,16 @@ namespace HolographicMemory.Tests
             return (
                 from triple in _facts.AsParallel()
                 from item in new[] { Filter(triple.S), Filter(triple.P), Filter(triple.O) }
+                where item != default
                 orderby item.Item1 descending
                 select item
             ).Take(max);
 
             (float, RetrievalVector<float>) Filter<TVector>(TVector vector) where TVector : BaseMemoryVector<TVector, float>
             {
+                if (vector.Type != type)
+                    return default;
+                
                 var sim = CosineSimilarity(vector.Vector.Span, query.Span);
                 return (
                     sim,
@@ -365,9 +369,7 @@ namespace HolographicMemory.Tests
         {
             using var results = Search(memory, type, vector, 1).GetEnumerator();
             if (!results.MoveNext())
-            {
                 return null;
-            }
 
             return results.Current;
         }
