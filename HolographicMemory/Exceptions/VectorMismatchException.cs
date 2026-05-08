@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using HolographicMemory.Storage;
+using System.Numerics;
 
 namespace HolographicMemory.Exceptions;
 
@@ -13,7 +14,7 @@ public class VectorMismatchException
     {
     }
 
-    internal static void CheckAndThrow<TV, TN>(TV vector, HolographicMemory<TN> memory, string paramName)
+    internal static void CheckAndThrow<TV, TN>(TV vector, HolographicStorage<TN> memory, string paramName)
         where TV : BaseMemoryVector<TV, TN>
         where TN : struct, INumber<TN>, IRootFunctions<TN>
     {
