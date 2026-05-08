@@ -363,7 +363,13 @@ namespace HolographicMemory.Tests
 
         public (float Similarity, RetrievalVector<float> Vector)? Search(Guid memory, MemoryVectorType type, ReadOnlyMemory<float> vector)
         {
-            return Search(memory, type, vector, 1).SingleOrDefault();
+            using var results = Search(memory, type, vector, 1).GetEnumerator();
+            if (!results.MoveNext())
+            {
+                return null;
+            }
+
+            return results.Current;
         }
     }
 }
