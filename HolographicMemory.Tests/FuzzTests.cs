@@ -232,6 +232,7 @@ namespace HolographicMemory.Tests
         }
 
         [TestMethod]
+        [TestCategory("NonCI")]
         public void Fuzz_Retrieval()
         {
             TestContext.WriteLine("Facts | Subject acc | Object acc | Predicate acc | Milliseconds");
