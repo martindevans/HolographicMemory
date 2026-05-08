@@ -2,6 +2,7 @@
 using HolographicMemory.Exceptions;
 using HolographicMemory.Extensions;
 using System.Numerics;
+using System.Numerics.Tensors;
 using static HolographicMemory.Storage.HRR;
 using static System.Numerics.Tensors.TensorPrimitives;
 
@@ -160,8 +161,7 @@ public class HolographicStorage
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, vector.Length, nameof(vector));
 
-        for (var i = 0; i < _memoryVector.Length; i++)
-            _memoryVector[i] += (float)vector[i];
+        Add(_memoryVector, vector, _memoryVector);
 
         _requiresFft = true;
     }
@@ -198,9 +198,8 @@ public class HolographicStorage
     {
         ArgumentOutOfRangeException.ThrowIfNotEqual(Dimensions, vector.Length, nameof(vector));
 
-        for (var i = 0; i < _memoryVector.Length; i++)
-            _memoryVector[i] -= (float)vector[i];
-
+        Subtract(_memoryVector, vector, _memoryVector);
+        
         _requiresFft = true;
     }
 
