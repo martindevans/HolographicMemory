@@ -1,7 +1,7 @@
 ﻿using HolographicMemory.Storage;
 using static System.Numerics.Tensors.TensorPrimitives;
 
-var memory = new HolographicStorage<float>(dimensions:8192, Guid.NewGuid());
+var memory = new HolographicStorage(dimensions:8192, Guid.NewGuid());
 
 // People
 var Martin = memory.CreateEntity("Martin");
@@ -22,8 +22,8 @@ var Pizza = memory.CreateEntity("Pizza");
 var Man = memory.CreateProperty("Man");
 var Woman = memory.CreateProperty("Man");
 
-//todo: var animeHalf = anime.ToArray();
-//todo: TensorPrimitives.Multiply(anime, 0.5f, animeHalf);
+//todo: var animefloat = anime.ToArray();
+//todo: TensorPrimitives.Multiply(anime, 0.5f, animefloat);
 
 memory.Store(Martin, Man);
 memory.Store(Alice, Woman);
